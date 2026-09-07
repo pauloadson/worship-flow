@@ -8,12 +8,13 @@ import { AuthModule } from './auth/auth.module.js';
 import { ApiKeyGuard } from './common/guards/api-key.guard.js';
 import { GroupsModule } from './groups/groups.module.js';
 import { SongsModule } from './songs/songs.module.js';
+import { EventsModule } from './events/events.module.js';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     PrismaModule, 
-    AuthModule, GroupsModule, SongsModule
+    AuthModule, GroupsModule, SongsModule, EventsModule
   ],
   controllers: [AppController],
   providers: [

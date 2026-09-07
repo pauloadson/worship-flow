@@ -79,8 +79,9 @@ model Song {
 model Event {
   id        String   @id @default(uuid())
   groupId   String
+  title     String
   date      DateTime
-  eventType String // e.g. "Ensaio" or "Culto"
+  eventType String? // e.g. "Ensaio" or "Culto"
   group     Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
 
   rsvps EventRsvp[]

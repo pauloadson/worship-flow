@@ -26,10 +26,30 @@ interface Song {
   chords?: string;
 }
 
+interface EventRsvp {
+  userId: string;
+  status: string;
+  member: {
+    user: {
+      name: string;
+    }
+  }
+}
+
+interface EventData {
+  id: string;
+  title: string;
+  date: string;
+  eventType?: string;
+  rsvps: EventRsvp[];
+}
+
 export default function DashboardPage() {
   const [user, setUser] = useState<User | null>(null);
   const [groups, setGroups] = useState<Group[]>([]);
   const [songs, setSongs] = useState<Song[]>([]);
+  const [events, setEvents] = useState<EventData[]>([]);
+  
   const [loading, setLoading] = useState(true);
   const [showCreateGroup, setShowCreateGroup] = useState(false);
   const [newGroupName, setNewGroupName] = useState('');
@@ -39,10 +59,14 @@ export default function DashboardPage() {
   const [editMode, setEditMode] = useState(false);
   const [songForm, setSongForm] = useState<Partial<Song>>({ title: '', artist: '', key: '', videoLessonUrl: '', lyrics: '', chords: '' });
 
+  const [showAddEvent, setShowAddEvent] = useState(false);
+  const [eventForm, setEventForm] = useState({ title: '', date: '', eventType: 'Culto' });
+
   const [activeGroupId, setActiveGroupId] = useState<string | null>(null);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'letra' | 'cifra'>('letra');
+  const [mainTab, setMainTab] = useState<'repertorio' | 'eventos' | 'membros'>('repertorio');
 
   const router = useRouter();
 
@@ -136,11 +160,29 @@ export default function DashboardPage() {
     fetchData();
   }, [router]);
 
+  const fetchEvents = async (groupId: string, token: string) => {
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/groups/${groupId}/events`, {
+        headers: {
+          'x-api-key': process.env.NEXT_PUBLIC_API_KEY || '',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      if (res.ok) {
+        setEvents(await res.json());
+      }
+    } catch {
+      showToast('Erro ao carregar eventos');
+    }
+  };
+
   useEffect(() => {
     const token = localStorage.getItem('worship_token');
     if (activeGroupId && token && !loading) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       fetchSongs(activeGroupId, token);
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      fetchEvents(activeGroupId, token);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeGroupId]);
@@ -148,6 +190,59 @@ export default function DashboardPage() {
   const handleLogout = () => {
     localStorage.removeItem('worship_token');
     router.push('/login');
+  };
+
+  const handleSaveEvent = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!eventForm.title || !eventForm.date || !activeGroupId) return;
+    
+    const token = localStorage.getItem('worship_token');
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/groups/${activeGroupId}/events`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': process.env.NEXT_PUBLIC_API_KEY || '',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(eventForm)
+      });
+      if (res.ok) {
+        setShowAddEvent(false);
+        setEventForm({ title: '', date: '', eventType: 'Culto' });
+        if (token) fetchEvents(activeGroupId, token);
+        showToast('Evento criado com sucesso!');
+      } else {
+        showToast('Erro ao criar evento. Apenas admins.');
+      }
+    } catch {
+      showToast('Erro na conexão');
+    }
+  };
+
+  const handleRsvp = async (eventId: string, status: string) => {
+    const token = localStorage.getItem('worship_token');
+    if (!token || !activeGroupId) return;
+
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/groups/${activeGroupId}/events/${eventId}/rsvp`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': process.env.NEXT_PUBLIC_API_KEY || '',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ status })
+      });
+      if (res.ok) {
+        fetchEvents(activeGroupId, token);
+        showToast(status === 'CONFIRMED' ? 'Presença confirmada!' : 'Ausência sinalizada!');
+      } else {
+        showToast('Erro ao atualizar presença.');
+      }
+    } catch {
+      showToast('Erro na conexão');
+    }
   };
 
   const handleCreateGroup = async (e: React.FormEvent) => {
@@ -382,12 +477,25 @@ export default function DashboardPage() {
             </div>
           ) : (
             <>
-              <div className="mb-6 flex justify-between items-center bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
-                <div>
-                  <h2 className="text-2xl font-bold text-gray-900 dark:text-white">{activeGroup.name}</h2>
-                  <div className="text-sm text-gray-500 dark:text-gray-400 mt-1">Membros: {activeGroup._count.members}</div>
+              <div className="mb-6 bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
+                <div className="p-6 pb-0 flex flex-col">
+                  <div className="flex justify-between items-center mb-6">
+                    <div>
+                      <h2 className="text-2xl font-bold text-gray-900 dark:text-white">{activeGroup.name}</h2>
+                      <div className="text-sm text-gray-500 dark:text-gray-400 mt-1">Membros: {activeGroup._count.members}</div>
+                    </div>
+                  </div>
+                  
+                  <div className="flex space-x-8 border-b border-gray-200 dark:border-gray-700">
+                    <button onClick={() => setMainTab('repertorio')} className={`pb-4 text-sm font-medium transition-colors ${mainTab === 'repertorio' ? 'text-blue-600 border-b-2 border-blue-600 dark:text-blue-400 dark:border-blue-400' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'}`}>Músicas</button>
+                    <button onClick={() => setMainTab('eventos')} className={`pb-4 text-sm font-medium transition-colors ${mainTab === 'eventos' ? 'text-blue-600 border-b-2 border-blue-600 dark:text-blue-400 dark:border-blue-400' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'}`}>Eventos & Escalas</button>
+                    <button onClick={() => setMainTab('membros')} className={`pb-4 text-sm font-medium transition-colors ${mainTab === 'membros' ? 'text-blue-600 border-b-2 border-blue-600 dark:text-blue-400 dark:border-blue-400' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'}`}>Membros</button>
+                  </div>
                 </div>
               </div>
+
+              {mainTab === 'repertorio' && (
+                <>
 
               <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
                 {/* Próximo Ensaio / Culto */}
@@ -450,6 +558,74 @@ export default function DashboardPage() {
                   </ul>
                 )}
               </div>
+              </>
+              )}
+
+              {mainTab === 'eventos' && (
+                <div className="mt-8">
+                  <div className="flex justify-between items-center mb-6">
+                    <h2 className="text-xl font-medium text-gray-900 dark:text-white">Eventos & Escalas</h2>
+                    <button onClick={() => setShowAddEvent(true)} className="rounded-md border border-transparent bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 transition-colors">
+                      + Agendar Evento
+                    </button>
+                  </div>
+                  
+                  {events.length === 0 ? (
+                    <div className="rounded-lg bg-white dark:bg-gray-800 p-8 text-center shadow">
+                      <p className="text-gray-500 dark:text-gray-400">Nenhum evento agendado.</p>
+                    </div>
+                  ) : (
+                    <div className="grid gap-6">
+                      {events.map((event) => (
+                        <div key={event.id} className="rounded-lg bg-white dark:bg-gray-800 p-6 shadow">
+                          <div className="flex justify-between items-start border-b border-gray-200 dark:border-gray-700 pb-4 mb-4">
+                            <div>
+                              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{event.title}</h3>
+                              <p className="text-sm text-gray-500 dark:text-gray-400">
+                                {new Date(event.date).toLocaleString('pt-BR', { dateStyle: 'long', timeStyle: 'short' })} • {event.eventType}
+                              </p>
+                            </div>
+                            <div className="flex space-x-2">
+                              <button onClick={() => handleRsvp(event.id, 'CONFIRMED')} className="rounded bg-green-50 text-green-700 hover:bg-green-100 px-3 py-1 text-sm font-medium transition-colors">Confirmar</button>
+                              <button onClick={() => handleRsvp(event.id, 'DECLINED')} className="rounded bg-red-50 text-red-700 hover:bg-red-100 px-3 py-1 text-sm font-medium transition-colors">Ausente</button>
+                            </div>
+                          </div>
+                          <div>
+                            <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Presenças Confirmadas ({event.rsvps.filter(r => r.status === 'CONFIRMED').length})</h4>
+                            <div className="flex flex-wrap gap-2">
+                              {event.rsvps.filter(r => r.status === 'CONFIRMED').map(r => (
+                                <span key={r.userId} className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                  {r.member.user.name}
+                                </span>
+                              ))}
+                              {event.rsvps.filter(r => r.status === 'CONFIRMED').length === 0 && (
+                                <span className="text-sm text-gray-500 italic">Ninguém confirmou ainda.</span>
+                              )}
+                            </div>
+                          </div>
+                          <div className="mt-4">
+                            <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Ausências ({event.rsvps.filter(r => r.status === 'DECLINED').length})</h4>
+                            <div className="flex flex-wrap gap-2">
+                              {event.rsvps.filter(r => r.status === 'DECLINED').map(r => (
+                                <span key={r.userId} className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                                  {r.member.user.name}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {mainTab === 'membros' && (
+                <div className="mt-8 rounded-lg bg-white dark:bg-gray-800 p-8 text-center shadow">
+                  <h2 className="text-xl font-medium text-gray-900 dark:text-white">Membros do Ministério</h2>
+                  <p className="mt-2 text-gray-500 dark:text-gray-400">Em breve você poderá gerenciar, convidar e remover membros nesta aba.</p>
+                </div>
+              )}
             </>
           )}
         </div>
@@ -652,6 +828,66 @@ export default function DashboardPage() {
                 </button>
                 <button type="submit" className="rounded-md border border-transparent bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 transition-colors">
                   Criar
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Agendar Evento */}
+      {showAddEvent && activeGroup && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4" onClick={(e) => { if(e.target === e.currentTarget) setShowAddEvent(false); }}>
+          <div className="w-full max-w-md rounded-lg bg-white dark:bg-gray-800 p-6 shadow-xl">
+            <div className="flex justify-between items-start mb-4">
+              <h3 className="text-lg font-medium text-gray-900 dark:text-white">Agendar Evento / Escala</h3>
+              <button onClick={() => setShowAddEvent(false)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors p-1 -mt-1 -mr-1">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <form onSubmit={handleSaveEvent} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Título do Evento</label>
+                <input
+                  type="text"
+                  required
+                  value={eventForm.title}
+                  onChange={(e) => setEventForm({...eventForm, title: e.target.value})}
+                  className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2 border transition-colors"
+                  placeholder="Ex: Culto de Domingo, Ensaio Geral"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Data e Hora</label>
+                  <input
+                    type="datetime-local"
+                    required
+                    value={eventForm.date}
+                    onChange={(e) => setEventForm({...eventForm, date: e.target.value})}
+                    className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2 border transition-colors"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Tipo</label>
+                  <select
+                    value={eventForm.eventType}
+                    onChange={(e) => setEventForm({...eventForm, eventType: e.target.value})}
+                    className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2 border transition-colors"
+                  >
+                    <option value="Culto">Culto</option>
+                    <option value="Ensaio">Ensaio</option>
+                    <option value="Reunião">Reunião</option>
+                    <option value="Outro">Outro</option>
+                  </select>
+                </div>
+              </div>
+              <div className="mt-5 flex justify-end space-x-3 pt-4 border-t border-gray-200 dark:border-gray-700">
+                <button type="button" onClick={() => setShowAddEvent(false)} className="rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors">
+                  Cancelar
+                </button>
+                <button type="submit" className="rounded-md border border-transparent bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 transition-colors">
+                  Agendar
                 </button>
               </div>
             </form>
