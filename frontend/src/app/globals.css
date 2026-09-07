@@ -24,3 +24,12 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+@layer base {
+  button, 
+  a, 
+  select, 
+  [role="button"] {
+    cursor: pointer !important;
+  }
+}
