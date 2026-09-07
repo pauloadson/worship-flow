@@ -69,6 +69,7 @@ model Song {
   artist         String?
   key            String?
   lyrics         String? @db.Text
+  chords         String? @db.Text
   sheetMusicUrl  String?
   videoLessonUrl String?
   audioUrl       String?

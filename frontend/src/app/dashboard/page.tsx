@@ -16,7 +16,7 @@ export default function DashboardPage() {
   const [showAddSong, setShowAddSong] = useState(false);
   const [selectedSong, setSelectedSong] = useState<any>(null);
   const [editMode, setEditMode] = useState(false);
-  const [songForm, setSongForm] = useState({ title: '', artist: '', key: '', videoLessonUrl: '', lyrics: '' });
+  const [songForm, setSongForm] = useState({ title: '', artist: '', key: '', videoLessonUrl: '', lyrics: '', chords: '' });
 
   const router = useRouter();
 
@@ -131,6 +131,7 @@ export default function DashboardPage() {
         key: songForm.key || undefined,
         videoLessonUrl: songForm.videoLessonUrl || undefined,
         lyrics: songForm.lyrics || undefined,
+        chords: songForm.chords || undefined,
       };
 
       const res = await fetch(url, {
@@ -148,7 +149,7 @@ export default function DashboardPage() {
         setShowAddSong(false);
         setSelectedSong(null);
         setEditMode(false);
-        setSongForm({ title: '', artist: '', key: '', videoLessonUrl: '', lyrics: '' });
+        setSongForm({ title: '', artist: '', key: '', videoLessonUrl: '', lyrics: '', chords: '' });
       } else {
         alert('Erro ao salvar música');
       }
@@ -164,14 +165,15 @@ export default function DashboardPage() {
       artist: song.artist || '',
       key: song.key || '',
       videoLessonUrl: song.videoLessonUrl || '',
-      lyrics: song.lyrics || ''
+      lyrics: song.lyrics || '',
+      chords: song.chords || ''
     });
     setEditMode(false);
     setShowAddSong(true);
   };
 
   const handleShareSong = (song: any) => {
-    const text = `*Música:* ${song.title}\n*Artista:* ${song.artist || 'N/A'}\n*Tom:* ${song.key || 'N/A'}\n\n*Link:* ${song.videoLessonUrl || 'N/A'}\n\n*Letra/Cifra:*\n${song.lyrics || 'N/A'}`;
+    const text = `*Música:* ${song.title}\n*Artista:* ${song.artist || 'N/A'}\n*Tom:* ${song.key || 'N/A'}\n\n*Link:* ${song.videoLessonUrl || 'N/A'}\n\n*Letra:*\n${song.lyrics || 'N/A'}\n\n*Cifra:*\n${song.chords || 'N/A'}`;
     
     if (navigator.share) {
       navigator.share({
@@ -378,14 +380,24 @@ export default function DashboardPage() {
                       placeholder="https://youtube.com/..."
                     />
                   </div>
-                  <div className="sm:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Letra e Cifra</label>
+                  <div className="sm:col-span-2 md:col-span-1">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Letra</label>
                     <textarea
                       rows={8}
                       value={songForm.lyrics}
                       onChange={(e) => setSongForm({...songForm, lyrics: e.target.value})}
                       className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2 border transition-colors font-mono"
-                      placeholder="Cole aqui a letra e cifra da música..."
+                      placeholder="Cole aqui a letra da música..."
+                    />
+                  </div>
+                  <div className="sm:col-span-2 md:col-span-1">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Cifra</label>
+                    <textarea
+                      rows={8}
+                      value={songForm.chords}
+                      onChange={(e) => setSongForm({...songForm, chords: e.target.value})}
+                      className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2 border transition-colors font-mono"
+                      placeholder="Cole aqui a cifra..."
                     />
                   </div>
                 </div>
@@ -417,14 +429,24 @@ export default function DashboardPage() {
                   </div>
                 )}
                 
-                {selectedSong?.lyrics && (
-                  <div>
-                    <h5 className="text-sm font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-2">Letra e Cifra</h5>
-                    <div className="bg-gray-50 dark:bg-gray-900 p-4 rounded border border-gray-200 dark:border-gray-700 overflow-x-auto">
-                      <pre className="text-gray-800 dark:text-gray-200 font-mono text-sm whitespace-pre-wrap">{selectedSong.lyrics}</pre>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {selectedSong?.lyrics && (
+                    <div>
+                      <h5 className="text-sm font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-2">Letra</h5>
+                      <div className="bg-gray-50 dark:bg-gray-900 p-4 rounded border border-gray-200 dark:border-gray-700 overflow-x-auto">
+                        <pre className="text-gray-800 dark:text-gray-200 font-mono text-sm whitespace-pre-wrap">{selectedSong.lyrics}</pre>
+                      </div>
                     </div>
-                  </div>
-                )}
+                  )}
+                  {selectedSong?.chords && (
+                    <div>
+                      <h5 className="text-sm font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-2">Cifra</h5>
+                      <div className="bg-gray-50 dark:bg-gray-900 p-4 rounded border border-gray-200 dark:border-gray-700 overflow-x-auto">
+                        <pre className="text-gray-800 dark:text-gray-200 font-mono text-sm whitespace-pre-wrap">{selectedSong.chords}</pre>
+                      </div>
+                    </div>
+                  )}
+                </div>
 
                 <div className="mt-6 flex justify-end border-t border-gray-200 dark:border-gray-700 pt-4">
                   <button type="button" onClick={() => setShowAddSong(false)} className="rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-6 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors">

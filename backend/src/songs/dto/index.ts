@@ -17,6 +17,10 @@ export class CreateSongDto {
   @IsOptional()
   lyrics?: string;
 
+  @IsString()
+  @IsOptional()
+  chords?: string;
+
   @IsUrl({}, { message: 'URL da cifra inválida.' })
   @IsOptional()
   sheetMusicUrl?: string;
