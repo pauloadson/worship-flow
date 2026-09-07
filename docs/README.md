@@ -1,27 +1,43 @@
-# Worship Flow - Documentação
+# Website
 
-Worship Flow é um Web App Full-Stack criado para facilitar a gestão de departamentos de música e ministérios de louvor, resolvendo problemas de comunicação e desorganização.
+This website is built using [Docusaurus](https://docusaurus.io/), a modern static website generator.
 
-## Estrutura do Monorepo
+## Installation
 
-Este projeto utiliza o [Turborepo](https://turbo.build/) com o gerenciador de pacotes `pnpm`, dividindo as aplicações em três pacotes principais:
+```bash
+npm install
+```
 
-- `/frontend`: Aplicação Web desenvolvida com **Next.js 15+ (App Router)** e **Tailwind CSS**.
-- `/backend`: API RESTful desenvolvida com **NestJS** e **Prisma ORM**.
-- `/docs`: Documentação geral do projeto.
+**Note**: feel free to use the package manager of your choice.
 
-## Comandos Principais
+## Local Development
 
-Na raiz do projeto, você pode executar os seguintes comandos:
+```bash
+npm run start
+```
 
-- `pnpm dev`: Inicia tanto o frontend quanto o backend em modo de desenvolvimento.
-- `pnpm build`: Constrói ambas as aplicações para produção.
-- `pnpm lint`: Executa a verificação de linting em todo o código.
-- `pnpm test`: Executa a suíte de testes.
+This command starts a local development server and opens up a browser window. Most changes are reflected live without having to restart the server.
 
-## Funcionalidades Planejadas
+## Build
 
-- **Gestão de Grupos (RBAC)**: Criação de grupos musicais e convites para membros, com permissões para administradores.
-- **Painel do Líder**: Dashboard rápido com confirmações de ensaios e repertório.
-- **Repertório**: Cadastro de músicas com links para videoaulas e partituras/cifras.
-- **Escalas e RSVP**: Agendamento de ensaios/cultos e sistema de confirmação (Sim/Não) com links únicos para os voluntários.
+```bash
+npm run build
+```
+
+This command generates static content into the `build` directory and can be served using any static contents hosting service.
+
+## Deployment
+
+Using SSH:
+
+```bash
+USE_SSH=true npm run deploy
+```
+
+Not using SSH:
+
+```bash
+GIT_USER=<Your GitHub username> npm run deploy
+```
+
+If you are using GitHub Pages for hosting, this command is a convenient way to build the website and push to the `gh-pages` branch.
