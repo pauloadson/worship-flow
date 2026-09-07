@@ -1,8 +1,57 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
 export default function DashboardPage() {
+  const [user, setUser] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const router = useRouter();
+
+  useEffect(() => {
+    const token = localStorage.getItem('worship_token');
+    if (!token) {
+      router.push('/login');
+      return;
+    }
+
+    const fetchUser = async () => {
+      try {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/me`, {
+          headers: {
+            'x-api-key': process.env.NEXT_PUBLIC_API_KEY || '',
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        
+        if (res.ok) {
+          const data = await res.json();
+          setUser(data);
+        } else {
+          localStorage.removeItem('worship_token');
+          router.push('/login');
+        }
+      } catch (e) {
+        localStorage.removeItem('worship_token');
+        router.push('/login');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUser();
+  }, [router]);
+
+  const handleLogout = () => {
+    localStorage.removeItem('worship_token');
+    router.push('/login');
+  };
+
+  if (loading) {
+    return <div className="flex min-h-screen items-center justify-center">Carregando...</div>;
+  }
+
   return (
     <div className="min-h-screen bg-gray-100">
       <nav className="bg-white shadow-sm">
@@ -12,8 +61,8 @@ export default function DashboardPage() {
               <h1 className="text-xl font-bold text-gray-900">Worship Flow</h1>
             </div>
             <div className="flex items-center space-x-4">
-              <span className="text-gray-700">Olá, Líder</span>
-              <button className="text-sm text-red-600 hover:text-red-800">Sair</button>
+              <span className="text-gray-700">Olá, {user?.name?.split(' ')[0]}</span>
+              <button onClick={handleLogout} className="text-sm text-red-600 hover:text-red-800">Sair</button>
             </div>
           </div>
         </div>
@@ -58,7 +107,7 @@ export default function DashboardPage() {
                 </li>
               </ul>
               <div className="mt-4">
-                <Link href="/dashboard/repertoire" className="text-sm font-medium text-blue-600 hover:text-blue-500">
+                <Link href="#" className="text-sm font-medium text-blue-600 hover:text-blue-500">
                   Ver materiais completos &rarr;
                 </Link>
               </div>
@@ -69,13 +118,13 @@ export default function DashboardPage() {
               <h2 className="text-lg font-medium text-gray-900">Ações Rápidas</h2>
               <div className="mt-4 flex flex-col space-y-3">
                 <button className="rounded bg-blue-50 px-4 py-2 text-sm font-medium text-blue-700 hover:bg-blue-100">
-                  + Nova Escala
+                  + Nova Escala (Em Breve)
                 </button>
                 <button className="rounded bg-blue-50 px-4 py-2 text-sm font-medium text-blue-700 hover:bg-blue-100">
-                  + Adicionar Música
+                  + Adicionar Música (Em Breve)
                 </button>
                 <button className="rounded bg-blue-50 px-4 py-2 text-sm font-medium text-blue-700 hover:bg-blue-100">
-                  Convidar Membros
+                  Convidar Membros (Em Breve)
                 </button>
               </div>
             </div>
