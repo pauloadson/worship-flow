@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ThemeToggle } from '@/components/theme-toggle';
+import { X } from 'lucide-react';
 
 export default function DashboardPage() {
   const [user, setUser] = useState<any>(null);
@@ -32,6 +33,17 @@ export default function DashboardPage() {
     };
     document.addEventListener('click', handleGlobalClick);
     return () => document.removeEventListener('click', handleGlobalClick);
+  }, []);
+
+  useEffect(() => {
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setShowAddSong(false);
+        setShowCreateGroup(false);
+      }
+    };
+    document.addEventListener('keydown', handleEsc);
+    return () => document.removeEventListener('keydown', handleEsc);
   }, []);
 
   const fetchSongs = async (groupId: string, token: string) => {
@@ -406,22 +418,27 @@ export default function DashboardPage() {
 
       {/* Modal Adicionar/Editar/Detalhes Música */}
       {showAddSong && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4" onClick={(e) => { if(e.target === e.currentTarget) setShowAddSong(false); }}>
           <div className="w-full max-w-2xl rounded-lg bg-white dark:bg-gray-800 p-6 shadow-xl max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-center mb-4">
+            <div className="flex justify-between items-start mb-4">
               <h3 className="text-lg font-medium text-gray-900 dark:text-white">
                 {editMode ? (selectedSong ? 'Editar Música' : 'Adicionar Música') : 'Detalhes da Música'}
               </h3>
-              {!editMode && (
-                <div className="flex space-x-2">
-                  <button onClick={() => handleShareSong(selectedSong)} className="text-sm text-green-600 dark:text-green-400 hover:underline">
-                    Compartilhar Tudo
-                  </button>
-                  <button onClick={() => setEditMode(true)} className="text-sm text-blue-600 dark:text-blue-400 hover:underline">
-                    Editar
-                  </button>
-                </div>
-              )}
+              <div className="flex items-center">
+                {!editMode && (
+                  <div className="flex items-center space-x-3 mr-4 border-r border-gray-200 dark:border-gray-700 pr-4">
+                    <button onClick={() => handleShareSong(selectedSong)} className="text-sm font-medium text-green-600 dark:text-green-400 hover:underline">
+                      Compartilhar Tudo
+                    </button>
+                    <button onClick={() => setEditMode(true)} className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline">
+                      Editar
+                    </button>
+                  </div>
+                )}
+                <button onClick={() => setShowAddSong(false)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors p-1">
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
             </div>
 
             {editMode ? (
@@ -552,9 +569,14 @@ export default function DashboardPage() {
 
       {/* Modal Criar Novo Ministério */}
       {showCreateGroup && activeGroup && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4" onClick={(e) => { if(e.target === e.currentTarget) setShowCreateGroup(false); }}>
           <div className="w-full max-w-sm rounded-lg bg-white dark:bg-gray-800 p-6 shadow-xl">
-            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Criar Novo Ministério</h3>
+            <div className="flex justify-between items-start mb-4">
+              <h3 className="text-lg font-medium text-gray-900 dark:text-white">Criar Novo Ministério</h3>
+              <button onClick={() => setShowCreateGroup(false)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors p-1 -mt-1 -mr-1">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
             <form onSubmit={handleCreateGroup} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Nome do Ministério</label>
