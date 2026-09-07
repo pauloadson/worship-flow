@@ -44,54 +44,48 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4">
-      <div className="w-full max-w-md space-y-8 bg-white p-8 shadow rounded-lg">
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 px-4 sm:px-6 lg:px-8 transition-colors">
+      <div className="w-full max-w-md space-y-8 bg-white dark:bg-gray-800 p-8 shadow rounded-lg">
         <div>
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
+          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900 dark:text-white">
             Worship Flow
           </h2>
-          <p className="mt-2 text-center text-sm text-gray-600">
-            Acesse sua conta para gerenciar seu ministério
+          <p className="mt-2 text-center text-sm text-gray-600 dark:text-gray-400">
+            Entre na sua conta para continuar
           </p>
         </div>
-        
+
         {error && (
-          <div className="rounded-md bg-red-50 p-4">
-            <p className="text-sm text-red-700">{error}</p>
+          <div className="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 px-4 py-3 rounded text-sm text-center transition-colors">
+            {error}
           </div>
         )}
 
         <form className="mt-8 space-y-6" onSubmit={handleLogin}>
           <div className="space-y-4 rounded-md shadow-sm">
             <div>
-              <label htmlFor="email-address" className="sr-only">
-                E-mail
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                Email
               </label>
               <input
-                id="email-address"
-                name="email"
                 type="email"
-                autoComplete="email"
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="relative block w-full appearance-none rounded-md border border-gray-300 px-3 py-2 text-gray-900 placeholder-gray-500 focus:z-10 focus:border-blue-500 focus:outline-none focus:ring-blue-500 sm:text-sm"
+                className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2 border transition-colors"
                 placeholder="E-mail"
               />
             </div>
             <div>
-              <label htmlFor="password" className="sr-only">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                 Senha
               </label>
               <input
-                id="password"
-                name="password"
                 type="password"
-                autoComplete="current-password"
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="relative block w-full appearance-none rounded-md border border-gray-300 px-3 py-2 text-gray-900 placeholder-gray-500 focus:z-10 focus:border-blue-500 focus:outline-none focus:ring-blue-500 sm:text-sm"
+                className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2 border transition-colors"
                 placeholder="Senha"
               />
             </div>

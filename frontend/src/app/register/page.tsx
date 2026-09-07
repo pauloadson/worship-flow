@@ -60,71 +60,74 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4">
-      <div className="w-full max-w-md space-y-8 bg-white p-8 shadow rounded-lg">
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 px-4 sm:px-6 lg:px-8 transition-colors">
+      <div className="w-full max-w-md space-y-8 bg-white dark:bg-gray-800 p-8 shadow rounded-lg">
         <div>
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            Crie sua conta
+          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900 dark:text-white">
+            Criar Conta
           </h2>
-          <p className="mt-2 text-center text-sm text-gray-600">
+          <p className="mt-2 text-center text-sm text-gray-600 dark:text-gray-400">
             Junte-se ao Worship Flow
           </p>
         </div>
         
         {error && (
-          <div className="rounded-md bg-red-50 p-4">
-            <p className="text-sm text-red-700">{error}</p>
+          <div className="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 px-4 py-3 rounded text-sm text-center transition-colors">
+            {error}
           </div>
         )}
 
         <form className="mt-8 space-y-6" onSubmit={handleRegister}>
           <div className="space-y-4 rounded-md shadow-sm">
             <div>
-              <label htmlFor="name" className="sr-only">Nome</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                Nome Completo
+              </label>
               <input
-                id="name"
                 type="text"
                 required
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="relative block w-full appearance-none rounded-md border border-gray-300 px-3 py-2 text-gray-900 placeholder-gray-500 focus:z-10 focus:border-blue-500 focus:outline-none focus:ring-blue-500 sm:text-sm"
-                placeholder="Nome Completo"
+                className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2 border transition-colors"
               />
             </div>
+
             <div>
-              <label htmlFor="email" className="sr-only">E-mail</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                Email
+              </label>
               <input
-                id="email"
                 type="email"
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="relative block w-full appearance-none rounded-md border border-gray-300 px-3 py-2 text-gray-900 placeholder-gray-500 focus:z-10 focus:border-blue-500 focus:outline-none focus:ring-blue-500 sm:text-sm"
-                placeholder="E-mail"
+                className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2 border transition-colors"
               />
             </div>
+
             <div>
-              <label htmlFor="phone" className="sr-only">Telefone</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                WhatsApp
+              </label>
               <input
-                id="phone"
                 type="tel"
-                required
                 value={phone}
                 onChange={handlePhoneChange}
-                className="relative block w-full appearance-none rounded-md border border-gray-300 px-3 py-2 text-gray-900 placeholder-gray-500 focus:z-10 focus:border-blue-500 focus:outline-none focus:ring-blue-500 sm:text-sm"
-                placeholder="Telefone (WhatsApp)"
+                placeholder="(11) 99999-9999"
+                className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2 border transition-colors"
               />
             </div>
+
             <div>
-              <label htmlFor="password" className="sr-only">Senha</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                Senha
+              </label>
               <input
-                id="password"
                 type="password"
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="relative block w-full appearance-none rounded-md border border-gray-300 px-3 py-2 text-gray-900 placeholder-gray-500 focus:z-10 focus:border-blue-500 focus:outline-none focus:ring-blue-500 sm:text-sm"
-                placeholder="Senha"
+                className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2 border transition-colors"
               />
             </div>
           </div>
