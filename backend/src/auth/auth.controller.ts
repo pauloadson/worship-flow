@@ -23,8 +23,11 @@ export class AuthController {
     return this.authService.login(dto);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Get('me')
-  getProfile(@CurrentUser() user: JwtPayload) {
-    return user;
+  getProfile(@Req() req: any) {
+    // req.user contains the JWT payload ({ sub, email })
+    // sub is the user ID
+    return this.authService.getProfile(req.user.sub || req.user.id);
   }
 }
