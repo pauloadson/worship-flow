@@ -565,7 +565,7 @@ export default function DashboardPage() {
                   <div>
                     <h5 className="text-sm font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-2">Referência</h5>
                     <a href={selectedSong.videoLessonUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 dark:text-blue-400 hover:underline inline-flex items-center">
-                      Assistir no YouTube
+                      Ouvir música
                     </a>
                   </div>
                 )}
