@@ -27,7 +27,11 @@ export default function LoginPage() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.message || 'Erro ao fazer login');
+        let errorMsg = data.message;
+        if (Array.isArray(errorMsg)) {
+          errorMsg = errorMsg.join('. ');
+        }
+        throw new Error(errorMsg || 'Erro ao fazer login');
       }
 
       // Salva o JWT no localStorage (em produção, o ideal é usar cookies HttpOnly)
