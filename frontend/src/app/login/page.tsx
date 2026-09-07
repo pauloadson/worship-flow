@@ -7,13 +7,36 @@ import { useRouter } from 'next/navigation';
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
   const router = useRouter();
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO: implement actual login against NestJS backend
-    console.log('Login attempt:', { email });
-    router.push('/dashboard');
+    setError('');
+
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': process.env.NEXT_PUBLIC_API_KEY || '',
+        },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Erro ao fazer login');
+      }
+
+      // Salva o JWT no localStorage (em produção, o ideal é usar cookies HttpOnly)
+      localStorage.setItem('worship_token', data.accessToken);
+      
+      router.push('/dashboard');
+    } catch (err: any) {
+      setError(err.message);
+    }
   };
 
   return (
@@ -27,6 +50,13 @@ export default function LoginPage() {
             Acesse sua conta para gerenciar seu ministério
           </p>
         </div>
+        
+        {error && (
+          <div className="rounded-md bg-red-50 p-4">
+            <p className="text-sm text-red-700">{error}</p>
+          </div>
+        )}
+
         <form className="mt-8 space-y-6" onSubmit={handleLogin}>
           <div className="space-y-4 rounded-md shadow-sm">
             <div>

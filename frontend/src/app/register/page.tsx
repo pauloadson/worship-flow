@@ -9,13 +9,34 @@ export default function RegisterPage() {
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
   const router = useRouter();
 
-  const handleRegister = (e: React.FormEvent) => {
+  const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO: implement actual registration
-    console.log('Register attempt:', { name, email, phone });
-    router.push('/login');
+    setError('');
+
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/register`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': process.env.NEXT_PUBLIC_API_KEY || '',
+        },
+        body: JSON.stringify({ name, email, password }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Erro ao criar conta');
+      }
+
+      // Após registrar com sucesso, redireciona para login (ou entra direto)
+      router.push('/login');
+    } catch (err: any) {
+      setError(err.message);
+    }
   };
 
   return (
@@ -29,6 +50,13 @@ export default function RegisterPage() {
             Junte-se ao Worship Flow
           </p>
         </div>
+        
+        {error && (
+          <div className="rounded-md bg-red-50 p-4">
+            <p className="text-sm text-red-700">{error}</p>
+          </div>
+        )}
+
         <form className="mt-8 space-y-6" onSubmit={handleRegister}>
           <div className="space-y-4 rounded-md shadow-sm">
             <div>
