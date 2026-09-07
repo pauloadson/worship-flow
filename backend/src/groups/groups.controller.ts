@@ -10,16 +10,16 @@ export class GroupsController {
 
   @Post()
   createGroup(@Req() req: any, @Body() dto: CreateGroupDto) {
-    return this.groupsService.createGroup(req.user.id, dto);
+    return this.groupsService.createGroup(req.user.sub, dto);
   }
 
   @Get()
   getMyGroups(@Req() req: any) {
-    return this.groupsService.getMyGroups(req.user.id);
+    return this.groupsService.getMyGroups(req.user.sub);
   }
 
   @Post(':id/members')
   addMember(@Req() req: any, @Param('id') groupId: string, @Body() dto: AddMemberDto) {
-    return this.groupsService.addMember(req.user.id, groupId, dto);
+    return this.groupsService.addMember(req.user.sub, groupId, dto);
   }
 }
