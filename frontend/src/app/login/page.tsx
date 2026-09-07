@@ -39,8 +39,12 @@ export default function LoginPage() {
       localStorage.setItem('worship_token', data.accessToken);
       
       router.push('/dashboard');
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError('Ocorreu um erro inesperado');
+      }
     }
   };
 

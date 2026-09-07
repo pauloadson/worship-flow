@@ -53,7 +53,7 @@ export default function RegisterPage() {
       } else {
         setError(Array.isArray(data.message) ? data.message.join('. ') : data.message);
       }
-    } catch (err) {
+    } catch {
       setError('Erro ao conectar com o servidor.');
     }
   };

@@ -8,6 +8,7 @@ export function ThemeToggle({ className = "fixed top-4 right-4" }: { className?:
   const [mounted, setMounted] = React.useState(false)
 
   React.useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setMounted(true)
   }, [])
 

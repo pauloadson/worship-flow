@@ -1,33 +1,53 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { X } from 'lucide-react';
 
+interface User {
+  name: string;
+  email: string;
+}
+
+interface Group {
+  id: string;
+  name: string;
+  _count: { members: number; songs: number; events: number };
+}
+
+interface Song {
+  id: string;
+  title: string;
+  artist?: string;
+  key?: string;
+  videoLessonUrl?: string;
+  lyrics?: string;
+  chords?: string;
+}
+
 export default function DashboardPage() {
-  const [user, setUser] = useState<any>(null);
-  const [groups, setGroups] = useState<any[]>([]);
-  const [activeGroupId, setActiveGroupId] = useState<string | null>(null);
-  const [songs, setSongs] = useState<any[]>([]);
+  const [user, setUser] = useState<User | null>(null);
+  const [groups, setGroups] = useState<Group[]>([]);
+  const [songs, setSongs] = useState<Song[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateGroup, setShowCreateGroup] = useState(false);
   const [newGroupName, setNewGroupName] = useState('');
   
   const [showAddSong, setShowAddSong] = useState(false);
-  const [selectedSong, setSelectedSong] = useState<any>(null);
+  const [selectedSong, setSelectedSong] = useState<Song | null>(null);
   const [editMode, setEditMode] = useState(false);
-  const [songForm, setSongForm] = useState({ title: '', artist: '', key: '', videoLessonUrl: '', lyrics: '', chords: '' });
+  const [songForm, setSongForm] = useState<Partial<Song>>({ title: '', artist: '', key: '', videoLessonUrl: '', lyrics: '', chords: '' });
 
+  const [activeGroupId, setActiveGroupId] = useState<string | null>(null);
   const [showUserMenu, setShowUserMenu] = useState(false);
 
   const router = useRouter();
 
   // close user menu when clicking outside (simple hack: just close it on main scroll or click)
   useEffect(() => {
-    const handleGlobalClick = (e: any) => {
-      if (!e.target.closest('.user-menu-container')) {
+    const handleGlobalClick = (e: MouseEvent) => {
+      if (!(e.target as Element).closest('.user-menu-container')) {
         setShowUserMenu(false);
       }
     };
@@ -96,7 +116,7 @@ export default function DashboardPage() {
           localStorage.removeItem('worship_token');
           router.push('/login');
         }
-      } catch (e) {
+      } catch {
         localStorage.removeItem('worship_token');
         router.push('/login');
       } finally {
@@ -110,8 +130,10 @@ export default function DashboardPage() {
   useEffect(() => {
     const token = localStorage.getItem('worship_token');
     if (activeGroupId && token && !loading) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       fetchSongs(activeGroupId, token);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeGroupId]);
 
   const handleLogout = () => {
@@ -144,7 +166,7 @@ export default function DashboardPage() {
       } else {
         alert('Erro ao criar grupo');
       }
-    } catch (err) {
+    } catch {
       alert('Erro na conexão');
     }
   };
@@ -189,12 +211,12 @@ export default function DashboardPage() {
       } else {
         alert('Erro ao salvar música');
       }
-    } catch (err) {
+    } catch {
       alert('Erro na conexão');
     }
   };
 
-  const openSongDetails = (song: any) => {
+  const openSongDetails = (song: Song) => {
     setSelectedSong(song);
     setSongForm({
       title: song.title || '',
@@ -208,7 +230,8 @@ export default function DashboardPage() {
     setShowAddSong(true);
   };
 
-  const handleShareSong = (song: any) => {
+  const handleShareSong = (song: Song | null) => {
+    if (!song) return;
     const text = `*Música:* ${song.title}\n*Artista:* ${song.artist || 'N/A'}\n*Tom:* ${song.key || 'N/A'}\n\n*Link:* ${song.videoLessonUrl || 'N/A'}\n\n*Letra:*\n${song.lyrics || 'N/A'}\n\n*Cifra:*\n${song.chords || 'N/A'}`;
     navigator.clipboard.writeText(text);
     alert('Informações copiadas para a área de transferência!');
