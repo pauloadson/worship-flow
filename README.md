@@ -14,7 +14,7 @@ O projeto está organizado como um monorepo utilizando [Turborepo](https://turbo
 
 - **Node.js** (v20 ou superior)
 - **pnpm** (recomendado v9+)
-- **PostgreSQL** (Rodando localmente ou via Docker para o banco de dados)
+- **MySQL** (Rodando localmente ou via Docker para o banco de dados)
 
 ## Como Executar o Projeto
 
@@ -28,7 +28,7 @@ Siga os passos abaixo para iniciar o projeto em sua máquina:
 2. **Configure as Variáveis de Ambiente**:
    - Vá até a pasta `backend/` e crie um arquivo `.env` baseado no `.env.example` (ou crie um novo) com a sua string de conexão:
      ```env
-     DATABASE_URL="postgresql://usuario:senha@localhost:5432/worship_flow?schema=public"
+     DATABASE_URL="mysql://usuario:senha@localhost:3306/worship_flow"
      JWT_SECRET="seu-segredo-super-seguro"
      ```
 
