@@ -1,7 +1,7 @@
 import { Controller, Post, Get, Body, Param, Req, UseGuards } from '@nestjs/common';
 import { GroupsService } from './groups.service.js';
 import { CreateGroupDto, AddMemberDto } from './dto/index.js';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
 
 @UseGuards(JwtAuthGuard)
 @Controller('groups')
