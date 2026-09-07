@@ -210,16 +210,8 @@ export default function DashboardPage() {
 
   const handleShareSong = (song: any) => {
     const text = `*Música:* ${song.title}\n*Artista:* ${song.artist || 'N/A'}\n*Tom:* ${song.key || 'N/A'}\n\n*Link:* ${song.videoLessonUrl || 'N/A'}\n\n*Letra:*\n${song.lyrics || 'N/A'}\n\n*Cifra:*\n${song.chords || 'N/A'}`;
-    
-    if (navigator.share) {
-      navigator.share({
-        title: song.title,
-        text: text,
-      }).catch(console.error);
-    } else {
-      navigator.clipboard.writeText(text);
-      alert('Informações copiadas para a área de transferência!');
-    }
+    navigator.clipboard.writeText(text);
+    alert('Informações copiadas para a área de transferência!');
   };
 
   const handleCopyText = (text: string, label: string) => {
@@ -428,7 +420,7 @@ export default function DashboardPage() {
                 {!editMode && (
                   <div className="flex items-center space-x-3 mr-4 border-r border-gray-200 dark:border-gray-700 pr-4">
                     <button onClick={() => handleShareSong(selectedSong)} className="text-sm font-medium text-green-600 dark:text-green-400 hover:underline">
-                      Compartilhar Tudo
+                      Compartilhar
                     </button>
                     <button onClick={() => setEditMode(true)} className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline">
                       Editar
