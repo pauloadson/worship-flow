@@ -7,12 +7,13 @@ import { PrismaModule } from './prisma/prisma.module.js';
 import { AuthModule } from './auth/auth.module.js';
 import { ApiKeyGuard } from './common/guards/api-key.guard.js';
 import { GroupsModule } from './groups/groups.module.js';
+import { SongsModule } from './songs/songs.module.js';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     PrismaModule, 
-    AuthModule, GroupsModule
+    AuthModule, GroupsModule, SongsModule
   ],
   controllers: [AppController],
   providers: [
