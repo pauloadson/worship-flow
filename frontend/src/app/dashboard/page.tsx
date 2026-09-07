@@ -19,7 +19,20 @@ export default function DashboardPage() {
   const [editMode, setEditMode] = useState(false);
   const [songForm, setSongForm] = useState({ title: '', artist: '', key: '', videoLessonUrl: '', lyrics: '', chords: '' });
 
+  const [showUserMenu, setShowUserMenu] = useState(false);
+
   const router = useRouter();
+
+  // close user menu when clicking outside (simple hack: just close it on main scroll or click)
+  useEffect(() => {
+    const handleGlobalClick = (e: any) => {
+      if (!e.target.closest('.user-menu-container')) {
+        setShowUserMenu(false);
+      }
+    };
+    document.addEventListener('click', handleGlobalClick);
+    return () => document.removeEventListener('click', handleGlobalClick);
+  }, []);
 
   const fetchSongs = async (groupId: string, token: string) => {
     const songsRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/groups/${groupId}/songs`, {
@@ -208,6 +221,7 @@ export default function DashboardPage() {
   }
 
   const activeGroup = activeGroupId ? groups.find(g => g.id === activeGroupId) : null;
+  const userInitials = user?.name ? user.name.substring(0, 2).toUpperCase() : 'WF';
 
   return (
     <div className="min-h-screen bg-gray-100 dark:bg-gray-900 transition-colors pb-12">
@@ -219,8 +233,60 @@ export default function DashboardPage() {
             </div>
             <div className="flex items-center space-x-4">
               <ThemeToggle className="" />
-              <span className="text-gray-700 dark:text-gray-300">Olá, {user?.name?.split(' ')[0]}</span>
-              <button onClick={handleLogout} className="text-sm text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300">Sair</button>
+              
+              <div className="relative user-menu-container">
+                <button 
+                  onClick={(e) => { e.stopPropagation(); setShowUserMenu(!showUserMenu); }}
+                  className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-600 text-white font-bold hover:bg-blue-700 transition focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800"
+                >
+                  {userInitials}
+                </button>
+                
+                {showUserMenu && (
+                  <div className="absolute right-0 mt-2 w-64 origin-top-right rounded-md bg-white dark:bg-gray-800 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none z-50">
+                    <div className="py-1">
+                      <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-700">
+                        <p className="text-sm font-medium text-gray-900 dark:text-white">{user?.name}</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{user?.email}</p>
+                      </div>
+                      
+                      <div className="px-4 py-3">
+                        <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">Meus Ministérios</p>
+                        <div className="max-h-48 overflow-y-auto space-y-1 pr-1">
+                          {groups.map(g => (
+                            <button 
+                              key={g.id}
+                              onClick={() => { setActiveGroupId(g.id); setShowUserMenu(false); }}
+                              className={`flex items-center justify-between w-full text-left px-2 py-2 text-sm rounded-md transition-colors ${activeGroupId === g.id ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 font-medium' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'}`}
+                            >
+                              <span className="truncate">{g.name}</span>
+                              {activeGroupId === g.id && <span className="text-blue-600 dark:text-blue-400 text-lg leading-none">&bull;</span>}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="border-t border-gray-100 dark:border-gray-700">
+                        <button 
+                          onClick={() => { setShowCreateGroup(true); setShowUserMenu(false); }}
+                          className="block w-full text-left px-4 py-3 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                        >
+                          + Criar Novo Ministério
+                        </button>
+                      </div>
+                      
+                      <div className="border-t border-gray-100 dark:border-gray-700">
+                        <button 
+                          onClick={handleLogout}
+                          className="block w-full text-left px-4 py-3 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"
+                        >
+                          Sair
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -265,22 +331,11 @@ export default function DashboardPage() {
             </div>
           ) : (
             <>
-              <div className="mb-6 flex justify-between items-center bg-white dark:bg-gray-800 p-4 rounded-lg shadow">
-                <div className="flex items-center space-x-4">
-                  <select 
-                    value={activeGroupId || ''} 
-                    onChange={(e) => setActiveGroupId(e.target.value)}
-                    className="text-xl font-bold text-gray-900 dark:text-white bg-transparent border-gray-300 dark:border-gray-600 rounded-md focus:ring-blue-500 cursor-pointer"
-                  >
-                    {groups.map(g => (
-                      <option key={g.id} value={g.id} className="text-base text-gray-900 dark:text-gray-100 dark:bg-gray-800">{g.name}</option>
-                    ))}
-                  </select>
-                  <button onClick={() => setShowCreateGroup(true)} className="text-sm text-blue-600 dark:text-blue-400 hover:underline font-medium">
-                    + Criar Ministério
-                  </button>
+              <div className="mb-6 flex justify-between items-center bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
+                <div>
+                  <h2 className="text-2xl font-bold text-gray-900 dark:text-white">{activeGroup.name}</h2>
+                  <div className="text-sm text-gray-500 dark:text-gray-400 mt-1">Membros: {activeGroup._count.members}</div>
                 </div>
-                <div className="text-sm text-gray-500 dark:text-gray-400">Membros: {activeGroup._count.members}</div>
               </div>
 
               <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
