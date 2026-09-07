@@ -4,6 +4,7 @@ import { RegisterDto, LoginDto } from './dto/index.js';
 import { Public } from '../common/decorators/public.decorator.js';
 import { CurrentUser } from '../common/decorators/current-user.decorator.js';
 import type { JwtPayload } from '../common/decorators/current-user.decorator.js';
+import { JwtAuthGuard } from './guards/jwt-auth.guard.js';
 
 @Controller('auth')
 export class AuthController {
