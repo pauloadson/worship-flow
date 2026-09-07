@@ -11,59 +11,59 @@ datasource db {
 }
 
 model User {
-  id            String         @id @default(uuid())
+  id            String   @id @default(uuid())
   name          String
-  email         String         @unique
+  email         String   @unique
   phone         String?
   password_hash String
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
-  
-  ownedGroups   Group[]        @relation("GroupOwner")
-  memberships   GroupMember[]
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  ownedGroups Group[]       @relation("GroupOwner")
+  memberships GroupMember[]
 }
 
 model Group {
-  id          String         @id @default(uuid())
-  name        String
-  ownerId     String
-  owner       User           @relation("GroupOwner", fields: [ownerId], references: [id])
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
-  
-  roles       Role[]
-  members     GroupMember[]
-  songs       Song[]
-  events      Event[]
+  id        String   @id @default(uuid())
+  name      String
+  ownerId   String
+  owner     User     @relation("GroupOwner", fields: [ownerId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  roles   Role[]
+  members GroupMember[]
+  songs   Song[]
+  events  Event[]
 }
 
 model Role {
-  id        String         @id @default(uuid())
-  groupId   String
-  name      String
-  group     Group          @relation(fields: [groupId], references: [id], onDelete: Cascade)
-  
-  members   GroupMember[]
+  id      String @id @default(uuid())
+  groupId String
+  name    String
+  group   Group  @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  members GroupMember[]
 
   @@unique([groupId, name])
 }
 
 model GroupMember {
-  userId    String
-  groupId   String
-  roleId    String?
-  isAdmin   Boolean        @default(false)
-  
-  user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  group     Group          @relation(fields: [groupId], references: [id], onDelete: Cascade)
-  role      Role?          @relation(fields: [roleId], references: [id], onDelete: SetNull)
-  rsvps     EventRsvp[]
-  
+  userId  String
+  groupId String
+  roleId  String?
+  isAdmin Boolean @default(false)
+
+  user  User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  group Group       @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  role  Role?       @relation(fields: [roleId], references: [id], onDelete: SetNull)
+  rsvps EventRsvp[]
+
   @@id([userId, groupId])
 }
 
 model Song {
-  id             String      @id @default(uuid())
+  id             String  @id @default(uuid())
   groupId        String
   title          String
   artist         String?
@@ -71,29 +71,29 @@ model Song {
   sheetMusicUrl  String?
   videoLessonUrl String?
   audioUrl       String?
-  group          Group       @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  group          Group   @relation(fields: [groupId], references: [id], onDelete: Cascade)
 }
 
 model Event {
-  id          String      @id @default(uuid())
-  groupId     String
-  date        DateTime
-  eventType   String      // e.g. "Ensaio" or "Culto"
-  group       Group       @relation(fields: [groupId], references: [id], onDelete: Cascade)
-  
-  rsvps       EventRsvp[]
+  id        String   @id @default(uuid())
+  groupId   String
+  date      DateTime
+  eventType String // e.g. "Ensaio" or "Culto"
+  group     Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  rsvps EventRsvp[]
 }
 
 model EventRsvp {
-  id          String      @id @default(uuid())
-  eventId     String
-  userId      String
-  groupId     String
-  status      String      @default("pending") // pending, accepted, declined
-  tokenLink   String?     @unique
-  
-  event       Event       @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  member      GroupMember @relation(fields: [userId, groupId], references: [userId, groupId], onDelete: Cascade)
-  
+  id        String  @id @default(uuid())
+  eventId   String
+  userId    String
+  groupId   String
+  status    String  @default("pending") // pending, accepted, declined
+  tokenLink String? @unique
+
+  event  Event       @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  member GroupMember @relation(fields: [userId, groupId], references: [userId, groupId], onDelete: Cascade)
+
   @@unique([eventId, userId])
 }
