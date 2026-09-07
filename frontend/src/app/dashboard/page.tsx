@@ -191,14 +191,26 @@ export default function DashboardPage() {
       ? `${process.env.NEXT_PUBLIC_API_URL}/groups/${activeGroupId}/songs/${selectedSong.id}`
       : `${process.env.NEXT_PUBLIC_API_URL}/groups/${activeGroupId}/songs`;
 
+    const cleanText = (text?: string) => {
+      if (!text) return text;
+      return text
+        .replace(/">/g, '')          // Remove copy-paste artifacts from sites like Cifra Club
+        .replace(/\t/g, '  ')        // Convert tabs to spaces to maintain alignment
+        .split('\n')
+        .map(line => line.trimEnd()) // Remove trailing spaces on each line
+        .join('\n')
+        .replace(/\n{3,}/g, '\n\n')  // Reduce 3+ empty lines to max 2
+        .trim();                     // Remove leading/trailing empty lines
+    };
+
     try {
       const payload = {
         title: songForm.title,
         artist: songForm.artist || undefined,
         key: songForm.key || undefined,
         videoLessonUrl: songForm.videoLessonUrl || undefined,
-        lyrics: songForm.lyrics || undefined,
-        chords: songForm.chords || undefined,
+        lyrics: cleanText(songForm.lyrics) || undefined,
+        chords: cleanText(songForm.chords) || undefined,
       };
 
       const res = await fetch(url, {
