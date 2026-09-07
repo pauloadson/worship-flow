@@ -42,6 +42,7 @@ export default function DashboardPage() {
   const [activeGroupId, setActiveGroupId] = useState<string | null>(null);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'letra' | 'cifra'>('letra');
 
   const router = useRouter();
 
@@ -234,6 +235,9 @@ export default function DashboardPage() {
       lyrics: song.lyrics || '',
       chords: song.chords || ''
     });
+    if (song.lyrics) setActiveTab('letra');
+    else if (song.chords) setActiveTab('cifra');
+    else setActiveTab('letra');
     setEditMode(false);
     setShowAddSong(true);
   };
@@ -554,30 +558,48 @@ export default function DashboardPage() {
                   </div>
                 )}
                 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {selectedSong?.lyrics && (
-                    <div>
-                      <div className="flex justify-between items-center mb-2">
-                        <h5 className="text-sm font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider">Letra</h5>
-                        <button onClick={() => handleCopyText(selectedSong.lyrics, 'Letra')} className="text-xs text-blue-600 dark:text-blue-400 hover:underline">Copiar Letra</button>
-                      </div>
-                      <div className="bg-gray-50 dark:bg-gray-900 p-4 rounded border border-gray-200 dark:border-gray-700 overflow-x-auto">
-                        <pre className="text-gray-800 dark:text-gray-200 font-mono text-sm whitespace-pre-wrap">{selectedSong.lyrics}</pre>
-                      </div>
+                {(selectedSong!.lyrics || selectedSong!.chords) && (
+                  <div className="mt-6">
+                    <div className="flex space-x-2 border-b border-gray-200 dark:border-gray-700 mb-4 pb-0">
+                      {selectedSong!.lyrics && (
+                        <button
+                          onClick={() => setActiveTab('letra')}
+                          className={`px-4 py-2 text-sm font-medium rounded-t-md transition-colors ${activeTab === 'letra' ? 'text-blue-600 border-b-2 border-blue-600 dark:text-blue-400 dark:border-blue-400 bg-blue-50/50 dark:bg-gray-800' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'}`}
+                        >
+                          Mostrar Letra
+                        </button>
+                      )}
+                      {selectedSong!.chords && (
+                        <button
+                          onClick={() => setActiveTab('cifra')}
+                          className={`px-4 py-2 text-sm font-medium rounded-t-md transition-colors ${activeTab === 'cifra' ? 'text-blue-600 border-b-2 border-blue-600 dark:text-blue-400 dark:border-blue-400 bg-blue-50/50 dark:bg-gray-800' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'}`}
+                        >
+                          Mostrar Cifra
+                        </button>
+                      )}
                     </div>
-                  )}
-                  {selectedSong?.chords && (
-                    <div>
-                      <div className="flex justify-between items-center mb-2">
-                        <h5 className="text-sm font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider">Cifra</h5>
-                        <button onClick={() => handleCopyText(selectedSong.chords, 'Cifra')} className="text-xs text-blue-600 dark:text-blue-400 hover:underline">Copiar Cifra</button>
+                    
+                    {activeTab === 'letra' && selectedSong!.lyrics && (
+                      <div className="bg-gray-50 dark:bg-gray-700/50 p-4 rounded-md">
+                        <div className="flex justify-between items-center mb-2">
+                          <h4 className="font-semibold text-gray-900 dark:text-white">Letra</h4>
+                          <button onClick={() => handleCopyText(selectedSong!.lyrics!, 'Letra')} className="text-xs font-medium text-blue-600 dark:text-blue-400 hover:underline bg-blue-50 dark:bg-blue-900/30 px-2 py-1 rounded">Copiar Letra</button>
+                        </div>
+                        <pre className="whitespace-pre-wrap text-sm text-gray-700 dark:text-gray-300 font-sans">{selectedSong!.lyrics}</pre>
                       </div>
-                      <div className="bg-gray-50 dark:bg-gray-900 p-4 rounded border border-gray-200 dark:border-gray-700 overflow-x-auto">
-                        <pre className="text-gray-800 dark:text-gray-200 font-mono text-sm whitespace-pre-wrap">{selectedSong.chords}</pre>
+                    )}
+
+                    {activeTab === 'cifra' && selectedSong!.chords && (
+                      <div className="bg-gray-50 dark:bg-gray-700/50 p-4 rounded-md">
+                        <div className="flex justify-between items-center mb-2">
+                          <h4 className="font-semibold text-gray-900 dark:text-white">Cifra</h4>
+                          <button onClick={() => handleCopyText(selectedSong!.chords!, 'Cifra')} className="text-xs font-medium text-blue-600 dark:text-blue-400 hover:underline bg-blue-50 dark:bg-blue-900/30 px-2 py-1 rounded">Copiar Cifra</button>
+                        </div>
+                        <pre className="whitespace-pre-wrap text-sm text-gray-700 dark:text-gray-300 font-mono">{selectedSong!.chords}</pre>
                       </div>
-                    </div>
-                  )}
-                </div>
+                    )}
+                  </div>
+                )}
 
                 <div className="mt-6 flex justify-end border-t border-gray-200 dark:border-gray-700 pt-4">
                   <button type="button" onClick={() => setShowAddSong(false)} className="rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-6 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors">
