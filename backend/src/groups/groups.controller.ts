@@ -1,0 +1,25 @@
+import { Controller, Post, Get, Body, Param, Req, UseGuards } from '@nestjs/common';
+import { GroupsService } from './groups.service.js';
+import { CreateGroupDto, AddMemberDto } from './dto/index.js';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
+
+@UseGuards(JwtAuthGuard)
+@Controller('groups')
+export class GroupsController {
+  constructor(private readonly groupsService: GroupsService) {}
+
+  @Post()
+  createGroup(@Req() req: any, @Body() dto: CreateGroupDto) {
+    return this.groupsService.createGroup(req.user.id, dto);
+  }
+
+  @Get()
+  getMyGroups(@Req() req: any) {
+    return this.groupsService.getMyGroups(req.user.id);
+  }
+
+  @Post(':id/members')
+  addMember(@Req() req: any, @Param('id') groupId: string, @Body() dto: AddMemberDto) {
+    return this.groupsService.addMember(req.user.id, groupId, dto);
+  }
+}

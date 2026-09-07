@@ -6,7 +6,10 @@ import { useRouter } from 'next/navigation';
 
 export default function DashboardPage() {
   const [user, setUser] = useState<any>(null);
+  const [groups, setGroups] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showCreateGroup, setShowCreateGroup] = useState(false);
+  const [newGroupName, setNewGroupName] = useState('');
   const router = useRouter();
 
   useEffect(() => {
@@ -16,18 +19,28 @@ export default function DashboardPage() {
       return;
     }
 
-    const fetchUser = async () => {
+    const fetchData = async () => {
       try {
-        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/me`, {
-          headers: {
-            'x-api-key': process.env.NEXT_PUBLIC_API_KEY || '',
-            'Authorization': `Bearer ${token}`
-          }
-        });
+        const [userRes, groupsRes] = await Promise.all([
+          fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/me`, {
+            headers: {
+              'x-api-key': process.env.NEXT_PUBLIC_API_KEY || '',
+              'Authorization': `Bearer ${token}`
+            }
+          }),
+          fetch(`${process.env.NEXT_PUBLIC_API_URL}/groups`, {
+            headers: {
+              'x-api-key': process.env.NEXT_PUBLIC_API_KEY || '',
+              'Authorization': `Bearer ${token}`
+            }
+          })
+        ]);
         
-        if (res.ok) {
-          const data = await res.json();
-          setUser(data);
+        if (userRes.ok && groupsRes.ok) {
+          const userData = await userRes.json();
+          const groupsData = await groupsRes.json();
+          setUser(userData);
+          setGroups(groupsData);
         } else {
           localStorage.removeItem('worship_token');
           router.push('/login');
@@ -40,7 +53,7 @@ export default function DashboardPage() {
       }
     };
 
-    fetchUser();
+    fetchData();
   }, [router]);
 
   const handleLogout = () => {
@@ -48,9 +61,39 @@ export default function DashboardPage() {
     router.push('/login');
   };
 
+  const handleCreateGroup = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newGroupName.trim()) return;
+    
+    const token = localStorage.getItem('worship_token');
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/groups`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': process.env.NEXT_PUBLIC_API_KEY || '',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ name: newGroupName }),
+      });
+      if (res.ok) {
+        const newGroup = await res.json();
+        setGroups([...groups, { ...newGroup, _count: { members: 1, songs: 0, events: 0 } }]);
+        setShowCreateGroup(false);
+        setNewGroupName('');
+      } else {
+        alert('Erro ao criar grupo');
+      }
+    } catch (err) {
+      alert('Erro na conexão');
+    }
+  };
+
   if (loading) {
     return <div className="flex min-h-screen items-center justify-center">Carregando...</div>;
   }
+
+  const activeGroup = groups.length > 0 ? groups[0] : null;
 
   return (
     <div className="min-h-screen bg-gray-100">
@@ -70,66 +113,83 @@ export default function DashboardPage() {
 
       <main className="mx-auto max-w-7xl py-6 sm:px-6 lg:px-8">
         <div className="px-4 py-6 sm:px-0">
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-            
-            {/* Próximo Ensaio / Culto */}
-            <div className="rounded-lg bg-white p-6 shadow">
-              <h2 className="text-lg font-medium text-gray-900">Próximo Evento</h2>
-              <div className="mt-4">
-                <p className="text-2xl font-semibold text-blue-600">Culto de Domingo</p>
-                <p className="text-sm text-gray-500">12/05/2027 às 18:00</p>
-                <div className="mt-4 flex space-x-2">
-                  <span className="inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800">
-                    5 Confirmados
-                  </span>
-                  <span className="inline-flex items-center rounded-full bg-yellow-100 px-2.5 py-0.5 text-xs font-medium text-yellow-800">
-                    2 Pendentes
-                  </span>
+          
+          {!activeGroup ? (
+            <div className="rounded-lg bg-white p-12 text-center shadow">
+              <h2 className="text-2xl font-semibold text-gray-900">Você ainda não faz parte de nenhum ministério</h2>
+              <p className="mt-2 text-gray-500">Crie seu primeiro grupo para começar a adicionar membros, músicas e escalas.</p>
+              
+              {!showCreateGroup ? (
+                <button 
+                  onClick={() => setShowCreateGroup(true)}
+                  className="mt-6 inline-flex items-center rounded-md border border-transparent bg-blue-600 px-6 py-3 text-base font-medium text-white hover:bg-blue-700"
+                >
+                  Criar Ministério
+                </button>
+              ) : (
+                <form onSubmit={handleCreateGroup} className="mt-6 mx-auto max-w-sm text-left">
+                  <label className="block text-sm font-medium text-gray-700">Nome do Ministério</label>
+                  <input
+                    type="text"
+                    required
+                    value={newGroupName}
+                    onChange={(e) => setNewGroupName(e.target.value)}
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2 border"
+                    placeholder="Ex: Louvor IPB"
+                  />
+                  <div className="mt-4 flex space-x-3">
+                    <button type="submit" className="w-full justify-center rounded-md border border-transparent bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700">
+                      Criar
+                    </button>
+                    <button type="button" onClick={() => setShowCreateGroup(false)} className="w-full justify-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
+                      Cancelar
+                    </button>
+                  </div>
+                </form>
+              )}
+            </div>
+          ) : (
+            <>
+              <div className="mb-6 flex justify-between items-center">
+                <h2 className="text-2xl font-bold text-gray-900">Ministério: {activeGroup.name}</h2>
+                <div className="text-sm text-gray-500">Membros: {activeGroup._count.members} | Músicas: {activeGroup._count.songs}</div>
+              </div>
+
+              <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+                {/* Próximo Ensaio / Culto */}
+                <div className="rounded-lg bg-white p-6 shadow">
+                  <h2 className="text-lg font-medium text-gray-900">Próximo Evento</h2>
+                  <div className="mt-4">
+                    <p className="text-gray-500 italic">Nenhum evento agendado (Em Breve)</p>
+                  </div>
+                </div>
+
+                {/* Repertório da Semana */}
+                <div className="rounded-lg bg-white p-6 shadow">
+                  <h2 className="text-lg font-medium text-gray-900">Repertório da Semana</h2>
+                  <div className="mt-4">
+                    <p className="text-gray-500 italic">Nenhuma música escalada (Em Breve)</p>
+                  </div>
+                </div>
+
+                {/* Ações Rápidas */}
+                <div className="rounded-lg bg-white p-6 shadow">
+                  <h2 className="text-lg font-medium text-gray-900">Ações Rápidas</h2>
+                  <div className="mt-4 flex flex-col space-y-3">
+                    <button className="rounded bg-blue-50 px-4 py-2 text-sm font-medium text-blue-700 hover:bg-blue-100">
+                      + Nova Escala (Em Breve)
+                    </button>
+                    <button className="rounded bg-blue-50 px-4 py-2 text-sm font-medium text-blue-700 hover:bg-blue-100">
+                      + Adicionar Música (Em Breve)
+                    </button>
+                    <button onClick={() => alert('Em breve: página de gestão de membros onde você poderá enviar convites por email!')} className="rounded bg-blue-50 px-4 py-2 text-sm font-medium text-blue-700 hover:bg-blue-100">
+                      Convidar Membros (Admin)
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
-
-            {/* Repertório da Semana */}
-            <div className="rounded-lg bg-white p-6 shadow">
-              <h2 className="text-lg font-medium text-gray-900">Repertório da Semana</h2>
-              <ul className="mt-4 divide-y divide-gray-200">
-                <li className="py-2 flex justify-between">
-                  <span className="text-gray-800">1. Ousado Amor</span>
-                  <span className="text-sm text-gray-500">G</span>
-                </li>
-                <li className="py-2 flex justify-between">
-                  <span className="text-gray-800">2. Lindo És</span>
-                  <span className="text-sm text-gray-500">A</span>
-                </li>
-                <li className="py-2 flex justify-between">
-                  <span className="text-gray-800">3. A Ele a Glória</span>
-                  <span className="text-sm text-gray-500">D</span>
-                </li>
-              </ul>
-              <div className="mt-4">
-                <Link href="#" className="text-sm font-medium text-blue-600 hover:text-blue-500">
-                  Ver materiais completos &rarr;
-                </Link>
-              </div>
-            </div>
-
-            {/* Ações Rápidas */}
-            <div className="rounded-lg bg-white p-6 shadow">
-              <h2 className="text-lg font-medium text-gray-900">Ações Rápidas</h2>
-              <div className="mt-4 flex flex-col space-y-3">
-                <button className="rounded bg-blue-50 px-4 py-2 text-sm font-medium text-blue-700 hover:bg-blue-100">
-                  + Nova Escala (Em Breve)
-                </button>
-                <button className="rounded bg-blue-50 px-4 py-2 text-sm font-medium text-blue-700 hover:bg-blue-100">
-                  + Adicionar Música (Em Breve)
-                </button>
-                <button className="rounded bg-blue-50 px-4 py-2 text-sm font-medium text-blue-700 hover:bg-blue-100">
-                  Convidar Membros (Em Breve)
-                </button>
-              </div>
-            </div>
-
-          </div>
+            </>
+          )}
         </div>
       </main>
     </div>
