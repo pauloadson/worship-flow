@@ -240,7 +240,7 @@ export default function DashboardPage() {
 
   const handleShareSong = (song: Song | null) => {
     if (!song) return;
-    const text = `*Música:* ${song.title}\n*Artista:* ${song.artist || 'N/A'}\n*Tom:* ${song.key || 'N/A'}\n\n*Link:* ${song.videoLessonUrl || 'N/A'}\n\n*Letra:*\n${song.lyrics || 'N/A'}\n\n*Cifra:*\n${song.chords || 'N/A'}`;
+    const text = `*Música:* ${song.title}\n*Artista:* ${song.artist || 'N/A'}\n*Tom:* ${song.key || 'N/A'}\n\n*Link:* ${song.videoLessonUrl || 'N/A'}`;
     navigator.clipboard.writeText(text);
     showToast('Informações copiadas!');
   };
