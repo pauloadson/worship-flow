@@ -526,7 +526,7 @@ export default function DashboardPage() {
                     <textarea
                       rows={8}
                       value={songForm.lyrics || ''}
-                      onChange={(e) => setSongForm({...songForm, lyrics: e.target.value})}
+                      onChange={(e) => setSongForm({...songForm, lyrics: e.target.value.replace(/">/g, '').replace(/\t/g, '  ')})}
                       className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2 border transition-colors font-mono"
                       placeholder="Cole aqui a letra da música..."
                     />
@@ -536,7 +536,7 @@ export default function DashboardPage() {
                     <textarea
                       rows={8}
                       value={songForm.chords || ''}
-                      onChange={(e) => setSongForm({...songForm, chords: e.target.value})}
+                      onChange={(e) => setSongForm({...songForm, chords: e.target.value.replace(/">/g, '').replace(/\t/g, '  ')})}
                       className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2 border transition-colors font-mono"
                       placeholder="Cole aqui a cifra..."
                     />
