@@ -41,8 +41,16 @@ export default function DashboardPage() {
 
   const [activeGroupId, setActiveGroupId] = useState<string | null>(null);
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   const router = useRouter();
+
+  const showToast = (msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => {
+      setToastMessage(null);
+    }, 3000);
+  };
 
   // close user menu when clicking outside (simple hack: just close it on main scroll or click)
   useEffect(() => {
@@ -164,10 +172,10 @@ export default function DashboardPage() {
         setShowCreateGroup(false);
         setNewGroupName('');
       } else {
-        alert('Erro ao criar grupo');
+        showToast('Erro ao criar grupo');
       }
     } catch {
-      alert('Erro na conexão');
+      showToast('Erro na conexão');
     }
   };
 
@@ -209,10 +217,10 @@ export default function DashboardPage() {
         setEditMode(false);
         setSongForm({ title: '', artist: '', key: '', videoLessonUrl: '', lyrics: '', chords: '' });
       } else {
-        alert('Erro ao salvar música');
+        showToast('Erro ao salvar música');
       }
     } catch {
-      alert('Erro na conexão');
+      showToast('Erro na conexão');
     }
   };
 
@@ -234,13 +242,13 @@ export default function DashboardPage() {
     if (!song) return;
     const text = `*Música:* ${song.title}\n*Artista:* ${song.artist || 'N/A'}\n*Tom:* ${song.key || 'N/A'}\n\n*Link:* ${song.videoLessonUrl || 'N/A'}\n\n*Letra:*\n${song.lyrics || 'N/A'}\n\n*Cifra:*\n${song.chords || 'N/A'}`;
     navigator.clipboard.writeText(text);
-    alert('Informações copiadas para a área de transferência!');
+    showToast('Informações copiadas!');
   };
 
   const handleCopyText = (text: string, label: string) => {
     if (!text) return;
     navigator.clipboard.writeText(text);
-    alert(`${label} copiada para a área de transferência!`);
+    showToast(`${label} copiada!`);
   };
 
   if (loading) {
@@ -614,6 +622,13 @@ export default function DashboardPage() {
               </div>
             </form>
           </div>
+        </div>
+      )}
+
+      {/* Toast Notification */}
+      {toastMessage && (
+        <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-[60] bg-gray-900 text-white dark:bg-white dark:text-gray-900 px-6 py-3 rounded-full shadow-lg font-medium text-sm transition-opacity duration-300 animate-in fade-in slide-in-from-bottom-4">
+          {toastMessage}
         </div>
       )}
     </div>
