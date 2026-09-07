@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { ThemeToggle } from '@/components/theme-toggle';
 
 export default function DashboardPage() {
   const [user, setUser] = useState<any>(null);
@@ -104,6 +105,7 @@ export default function DashboardPage() {
               <h1 className="text-xl font-bold text-gray-900 dark:text-white">Worship Flow</h1>
             </div>
             <div className="flex items-center space-x-4">
+              <ThemeToggle className="" />
               <span className="text-gray-700 dark:text-gray-300">Olá, {user?.name?.split(' ')[0]}</span>
               <button onClick={handleLogout} className="text-sm text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300">Sair</button>
             </div>

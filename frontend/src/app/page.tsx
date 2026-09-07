@@ -1,8 +1,10 @@
 import Link from 'next/link';
+import { ThemeToggle } from '@/components/theme-toggle';
 
 export default function Home() {
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-gray-50 dark:bg-gray-900 py-12 sm:px-6 lg:px-8 transition-colors">
+      <ThemeToggle />
       <div className="sm:mx-auto sm:w-full sm:max-w-md text-center">
         <h1 className="text-4xl font-bold tracking-tight text-gray-900 dark:text-white">
           Worship Flow

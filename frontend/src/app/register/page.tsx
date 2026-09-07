@@ -4,6 +4,8 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
+import { ThemeToggle } from '@/components/theme-toggle';
+
 export default function RegisterPage() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -13,18 +15,19 @@ export default function RegisterPage() {
   const router = useRouter();
 
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    let value = e.target.value.replace(/\D/g, '');
-    if (value.length > 11) value = value.slice(0, 11);
+    let value = e.target.value.replace(/\D/g, ''); // Remove tudo que não for dígito
+    if (value.length > 11) value = value.slice(0, 11); // Limita a 11 dígitos
     
-    let maskedValue = value;
+    // Aplica a máscara (XX) XXXXX-XXXX
+    let formatted = value;
     if (value.length > 2) {
-      maskedValue = `(${value.slice(0, 2)}) ${value.slice(2)}`;
+      formatted = `(${value.slice(0, 2)}) ${value.slice(2)}`;
     }
     if (value.length > 7) {
-      maskedValue = `(${value.slice(0, 2)}) ${value.slice(2, 7)}-${value.slice(7)}`;
+      formatted = `(${value.slice(0, 2)}) ${value.slice(2, 7)}-${value.slice(7)}`;
     }
     
-    setPhone(maskedValue);
+    setPhone(formatted);
   };
 
   const handleRegister = async (e: React.FormEvent) => {
@@ -32,35 +35,32 @@ export default function RegisterPage() {
     setError('');
 
     try {
-      const cleanPhone = phone.replace(/\D/g, '');
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/register`, {
+      const plainPhone = phone.replace(/\D/g, '');
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/register`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-api-key': process.env.NEXT_PUBLIC_API_KEY || '',
+          'x-api-key': process.env.NEXT_PUBLIC_API_KEY || ''
         },
-        body: JSON.stringify({ name, email, password, phone: cleanPhone }),
+        body: JSON.stringify({ name, email, password, phone: plainPhone || undefined }),
       });
 
-      const data = await response.json();
+      const data = await res.json();
 
-      if (!response.ok) {
-        let errorMsg = data.message;
-        if (Array.isArray(errorMsg)) {
-          errorMsg = errorMsg.join('. ');
-        }
-        throw new Error(errorMsg || 'Erro ao criar conta');
+      if (res.ok) {
+        localStorage.setItem('worship_token', data.accessToken);
+        router.push('/dashboard');
+      } else {
+        setError(Array.isArray(data.message) ? data.message.join('. ') : data.message);
       }
-
-      // Após registrar com sucesso, redireciona para login (ou entra direto)
-      router.push('/login');
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err) {
+      setError('Erro ao conectar com o servidor.');
     }
   };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 px-4 sm:px-6 lg:px-8 transition-colors">
+      <ThemeToggle />
       <div className="w-full max-w-md space-y-8 bg-white dark:bg-gray-800 p-8 shadow rounded-lg">
         <div>
           <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900 dark:text-white">
