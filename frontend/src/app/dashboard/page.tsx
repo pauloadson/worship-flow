@@ -186,6 +186,12 @@ export default function DashboardPage() {
     }
   };
 
+  const handleCopyText = (text: string, label: string) => {
+    if (!text) return;
+    navigator.clipboard.writeText(text);
+    alert(`${label} copiada para a área de transferência!`);
+  };
+
   if (loading) {
     return <div className="flex min-h-screen items-center justify-center">Carregando...</div>;
   }
@@ -269,7 +275,7 @@ export default function DashboardPage() {
                     <button className="rounded bg-blue-50 dark:bg-blue-900/30 px-4 py-2 text-sm font-medium text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors text-left">
                       + Nova Escala (Em Breve)
                     </button>
-                    <button onClick={() => { setSelectedSong(null); setEditMode(true); setSongForm({ title: '', artist: '', key: '', videoLessonUrl: '', lyrics: '' }); setShowAddSong(true); }} className="rounded bg-blue-50 dark:bg-blue-900/30 px-4 py-2 text-sm font-medium text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors text-left">
+                    <button onClick={() => { setSelectedSong(null); setEditMode(true); setSongForm({ title: '', artist: '', key: '', videoLessonUrl: '', lyrics: '', chords: '' }); setShowAddSong(true); }} className="rounded bg-blue-50 dark:bg-blue-900/30 px-4 py-2 text-sm font-medium text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors text-left">
                       + Adicionar Música
                     </button>
                     <button onClick={() => alert('Em breve: página de gestão de membros onde você poderá enviar convites por email!')} className="rounded bg-blue-50 dark:bg-blue-900/30 px-4 py-2 text-sm font-medium text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors text-left">
@@ -283,7 +289,7 @@ export default function DashboardPage() {
               <div className="mt-8 rounded-lg bg-white dark:bg-gray-800 p-6 shadow">
                 <div className="flex justify-between items-center mb-4">
                   <h2 className="text-lg font-medium text-gray-900 dark:text-white">Repertório ({songs.length} músicas)</h2>
-                  <button onClick={() => { setSelectedSong(null); setEditMode(true); setSongForm({ title: '', artist: '', key: '', videoLessonUrl: '', lyrics: '' }); setShowAddSong(true); }} className="text-sm text-blue-600 dark:text-blue-400 hover:underline">
+                  <button onClick={() => { setSelectedSong(null); setEditMode(true); setSongForm({ title: '', artist: '', key: '', videoLessonUrl: '', lyrics: '', chords: '' }); setShowAddSong(true); }} className="text-sm text-blue-600 dark:text-blue-400 hover:underline">
                     + Adicionar
                   </button>
                 </div>
@@ -330,7 +336,7 @@ export default function DashboardPage() {
               {!editMode && (
                 <div className="flex space-x-2">
                   <button onClick={() => handleShareSong(selectedSong)} className="text-sm text-green-600 dark:text-green-400 hover:underline">
-                    Compartilhar
+                    Compartilhar Tudo
                   </button>
                   <button onClick={() => setEditMode(true)} className="text-sm text-blue-600 dark:text-blue-400 hover:underline">
                     Editar
@@ -432,7 +438,10 @@ export default function DashboardPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {selectedSong?.lyrics && (
                     <div>
-                      <h5 className="text-sm font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-2">Letra</h5>
+                      <div className="flex justify-between items-center mb-2">
+                        <h5 className="text-sm font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider">Letra</h5>
+                        <button onClick={() => handleCopyText(selectedSong.lyrics, 'Letra')} className="text-xs text-blue-600 dark:text-blue-400 hover:underline">Copiar Letra</button>
+                      </div>
                       <div className="bg-gray-50 dark:bg-gray-900 p-4 rounded border border-gray-200 dark:border-gray-700 overflow-x-auto">
                         <pre className="text-gray-800 dark:text-gray-200 font-mono text-sm whitespace-pre-wrap">{selectedSong.lyrics}</pre>
                       </div>
@@ -440,7 +449,10 @@ export default function DashboardPage() {
                   )}
                   {selectedSong?.chords && (
                     <div>
-                      <h5 className="text-sm font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-2">Cifra</h5>
+                      <div className="flex justify-between items-center mb-2">
+                        <h5 className="text-sm font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider">Cifra</h5>
+                        <button onClick={() => handleCopyText(selectedSong.chords, 'Cifra')} className="text-xs text-blue-600 dark:text-blue-400 hover:underline">Copiar Cifra</button>
+                      </div>
                       <div className="bg-gray-50 dark:bg-gray-900 p-4 rounded border border-gray-200 dark:border-gray-700 overflow-x-auto">
                         <pre className="text-gray-800 dark:text-gray-200 font-mono text-sm whitespace-pre-wrap">{selectedSong.chords}</pre>
                       </div>
