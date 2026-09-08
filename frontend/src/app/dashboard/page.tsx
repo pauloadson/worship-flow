@@ -828,25 +828,29 @@ export default function DashboardPage() {
                 <>
 
               <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-                {/* Próximo Ensaio / Culto */}
+                {/* Próximos Eventos */}
                 <div className="rounded-lg bg-white dark:bg-gray-800 p-6 shadow">
-                  <h2 className="text-lg font-medium text-gray-900 dark:text-white">Próximo Evento</h2>
+                  <h2 className="text-lg font-medium text-gray-900 dark:text-white">Próximos Eventos</h2>
                   <div className="mt-4">
                     {events.length > 0 ? (
-                      <div className="flex flex-col gap-2">
-                        <p className="text-lg font-semibold text-blue-600 dark:text-blue-400">{events[0].title}</p>
-                        <p className="text-sm text-gray-600 dark:text-gray-300">
-                          {new Date(events[0].date).toLocaleString('pt-BR', { dateStyle: 'long', timeStyle: 'short' })}
-                        </p>
-                        <button onClick={() => {
-                          setMainTab('eventos');
-                          setTimeout(() => {
-                            const el = document.getElementById(`event-${events[0].id}`);
-                            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                          }, 100);
-                        }} className="text-sm text-blue-600 hover:underline mt-2 text-left w-fit">
-                          Ver Detalhes &rarr;
-                        </button>
+                      <div className="flex flex-col gap-4">
+                        {events.slice(0, 3).map(ev => (
+                          <div key={ev.id} className="border-l-2 border-blue-500 pl-3">
+                            <p className="text-sm font-semibold text-gray-900 dark:text-white">{ev.title}</p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400">
+                              {new Date(ev.date).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}
+                            </p>
+                            <button onClick={() => {
+                              setMainTab('eventos');
+                              setTimeout(() => {
+                                const el = document.getElementById(`event-${ev.id}`);
+                                if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                              }, 100);
+                            }} className="text-xs text-blue-600 dark:text-blue-400 hover:underline mt-1 text-left w-fit">
+                              Ver Detalhes &rarr;
+                            </button>
+                          </div>
+                        ))}
                       </div>
                     ) : (
                       <p className="text-gray-500 dark:text-gray-400 italic">Nenhum evento agendado</p>
