@@ -1443,7 +1443,7 @@ export default function DashboardPage() {
               }}
               className="w-full mb-6 flex justify-center items-center gap-2 rounded-md bg-blue-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-blue-700 transition-colors"
             >
-              Copiar Mensagem Genérica
+              Copiar Mensagem
             </button>
 
             <h4 className="text-sm font-medium text-gray-900 dark:text-white mb-3">Enviar no WhatsApp</h4>
