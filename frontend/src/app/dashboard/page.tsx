@@ -832,7 +832,25 @@ export default function DashboardPage() {
                 <div className="rounded-lg bg-white dark:bg-gray-800 p-6 shadow">
                   <h2 className="text-lg font-medium text-gray-900 dark:text-white">Próximo Evento</h2>
                   <div className="mt-4">
-                    <p className="text-gray-500 dark:text-gray-400 italic">Nenhum evento agendado (Em Breve)</p>
+                    {events.length > 0 ? (
+                      <div className="flex flex-col gap-2">
+                        <p className="text-lg font-semibold text-blue-600 dark:text-blue-400">{events[0].title}</p>
+                        <p className="text-sm text-gray-600 dark:text-gray-300">
+                          {new Date(events[0].date).toLocaleString('pt-BR', { dateStyle: 'long', timeStyle: 'short' })}
+                        </p>
+                        <button onClick={() => {
+                          setMainTab('eventos');
+                          setTimeout(() => {
+                            const el = document.getElementById(`event-${events[0].id}`);
+                            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                          }, 100);
+                        }} className="text-sm text-blue-600 hover:underline mt-2 text-left w-fit">
+                          Ver Detalhes &rarr;
+                        </button>
+                      </div>
+                    ) : (
+                      <p className="text-gray-500 dark:text-gray-400 italic">Nenhum evento agendado</p>
+                    )}
                   </div>
                 </div>
 
@@ -840,14 +858,14 @@ export default function DashboardPage() {
                 <div className="rounded-lg bg-white dark:bg-gray-800 p-6 shadow">
                   <h2 className="text-lg font-medium text-gray-900 dark:text-white">Ações Rápidas</h2>
                   <div className="mt-4 flex flex-col space-y-3">
-                    <button className="rounded bg-blue-50 dark:bg-blue-900/30 px-4 py-2 text-sm font-medium text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors text-left">
-                      + Nova Escala (Em Breve)
+                    <button onClick={() => setMainTab('eventos')} className="rounded bg-blue-50 dark:bg-blue-900/30 px-4 py-2 text-sm font-medium text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors text-left">
+                      📅 Gerenciar Escalas
                     </button>
                     <button onClick={() => { setSelectedSong(null); setEditMode(true); setSongForm({ title: '', artist: '', key: '', videoLessonUrl: '', lyrics: '', chords: '' }); setShowAddSong(true); }} className="rounded bg-blue-50 dark:bg-blue-900/30 px-4 py-2 text-sm font-medium text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors text-left">
-                      + Adicionar Música
+                      🎵 Adicionar Música
                     </button>
-                    <button onClick={() => alert('Em breve: página de gestão de membros onde você poderá enviar convites por email!')} className="rounded bg-blue-50 dark:bg-blue-900/30 px-4 py-2 text-sm font-medium text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors text-left">
-                      Convidar Membros (Admin)
+                    <button onClick={() => { setMainTab('membros'); setShowAddMember(true); }} className="rounded bg-blue-50 dark:bg-blue-900/30 px-4 py-2 text-sm font-medium text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors text-left">
+                      👥 Convidar Membros
                     </button>
                   </div>
                 </div>
