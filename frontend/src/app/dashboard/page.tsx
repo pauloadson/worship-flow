@@ -273,9 +273,13 @@ export default function DashboardPage() {
   useEffect(() => {
     const token = localStorage.getItem('worship_token');
     if (activeGroupId && token && !loading) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       fetchSongs(activeGroupId, token);
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       fetchEvents(activeGroupId, token);
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       fetchSchedules(activeGroupId, token);
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       fetchMembers(activeGroupId, token);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -419,6 +423,39 @@ export default function DashboardPage() {
         showToast('Evento criado com sucesso!');
       } else {
         showToast('Erro ao criar evento. Apenas admins.');
+      }
+    } catch {
+      showToast('Erro na conexão');
+    }
+  };
+
+  const [showAddMember, setShowAddMember] = useState(false);
+  const [addMemberEmail, setAddMemberEmail] = useState('');
+
+  const handleAddMember = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!addMemberEmail || !activeGroupId) return;
+
+    const token = localStorage.getItem('worship_token');
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/groups/${activeGroupId}/members`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': process.env.NEXT_PUBLIC_API_KEY || '',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ email: addMemberEmail })
+      });
+      
+      const data = await res.json();
+      if (res.ok) {
+        setShowAddMember(false);
+        setAddMemberEmail('');
+        fetchMembers(activeGroupId, token as string);
+        showToast('Membro adicionado com sucesso!');
+      } else {
+        showToast(data.message || 'Erro ao adicionar membro.');
       }
     } catch {
       showToast('Erro na conexão');
@@ -919,15 +956,87 @@ export default function DashboardPage() {
               )}
 
               {mainTab === 'membros' && (
-                <div className="mt-8 rounded-lg bg-white dark:bg-gray-800 p-8 text-center shadow">
-                  <h2 className="text-xl font-medium text-gray-900 dark:text-white">Membros do Ministério</h2>
-                  <p className="mt-2 text-gray-500 dark:text-gray-400">Em breve você poderá gerenciar, convidar e remover membros nesta aba.</p>
+                <div className="space-y-6">
+                  <div className="flex justify-between items-center bg-white dark:bg-gray-800 p-4 rounded-lg shadow sm:p-6">
+                    <div>
+                      <h2 className="text-xl font-medium text-gray-900 dark:text-white">Membros do Ministério</h2>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">Gerencie a equipe e convoque músicos</p>
+                    </div>
+                    <button onClick={() => setShowAddMember(true)} className="rounded-md border border-transparent bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 transition-colors shadow-sm">
+                      + Adicionar Membro
+                    </button>
+                  </div>
+                  
+                  <div className="overflow-hidden bg-white dark:bg-gray-800 shadow rounded-lg">
+                    <ul className="divide-y divide-gray-200 dark:divide-gray-700">
+                      {members.map(member => (
+                        <li key={member.userId} className="p-4 sm:p-6 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+                          <div className="flex flex-col">
+                            <span className="text-sm font-medium text-gray-900 dark:text-white flex items-center gap-2">
+                              {member.user.name}
+                              {member.isAdmin && (
+                                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300">ADMIN</span>
+                              )}
+                            </span>
+                            <span className="text-sm text-gray-500 dark:text-gray-400">{member.user.email}</span>
+                            {member.user.phone && <span className="text-xs text-gray-400 mt-1">📱 {member.user.phone}</span>}
+                          </div>
+                          <div>
+                            {/* Futuramente: Ações como Remover ou Alterar Função */}
+                          </div>
+                        </li>
+                      ))}
+                      {members.length === 0 && (
+                        <li className="p-8 text-center text-gray-500">Nenhum membro encontrado neste ministério.</li>
+                      )}
+                    </ul>
+                  </div>
                 </div>
               )}
             </>
           )}
         </div>
       </main>
+
+      {/* Modal Adicionar Membro */}
+      {showAddMember && activeGroup && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4" onClick={(e) => { if(e.target === e.currentTarget) setShowAddMember(false); }}>
+          <div className="w-full max-w-sm rounded-lg bg-white dark:bg-gray-800 p-6 shadow-xl">
+            <div className="flex justify-between items-start mb-4">
+              <h3 className="text-lg font-medium text-gray-900 dark:text-white">Adicionar Novo Membro</h3>
+              <button onClick={() => setShowAddMember(false)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors p-1 -mt-1 -mr-1">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            
+            <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">
+              O usuário já deve ter criado uma conta no Worship Flow usando este e-mail.
+            </p>
+
+            <form onSubmit={handleAddMember} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">E-mail do Usuário</label>
+                <input
+                  type="email"
+                  required
+                  value={addMemberEmail}
+                  onChange={(e) => setAddMemberEmail(e.target.value)}
+                  className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2 border transition-colors"
+                  placeholder="exemplo@email.com"
+                />
+              </div>
+              <div className="mt-5 flex justify-end space-x-3">
+                <button type="button" onClick={() => setShowAddMember(false)} className="rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors">
+                  Cancelar
+                </button>
+                <button type="submit" className="rounded-md border border-transparent bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 transition-colors">
+                  Adicionar
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Modal Adicionar/Editar/Detalhes Música */}
       {showAddSong && (
