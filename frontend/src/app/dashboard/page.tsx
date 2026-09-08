@@ -155,8 +155,18 @@ export default function DashboardPage() {
 
   useEffect(() => {
     const token = localStorage.getItem('worship_token');
+    
+    // Configura a aba inicial e rolagem baseada na URL
+    const params = new URLSearchParams(window.location.search);
+    const urlTab = params.get('tab');
+    if (urlTab === 'eventos' || urlTab === 'membros' || urlTab === 'musicas') {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setMainTab(urlTab);
+    }
+    const eventId = params.get('eventId');
+
     if (!token) {
-      router.push('/login');
+      router.push(`/login?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`);
       return;
     }
 
@@ -186,13 +196,20 @@ export default function DashboardPage() {
           if (groupsData.length > 0) {
             setActiveGroupId(groupsData[0].id);
           }
+
+          if (eventId) {
+            setTimeout(() => {
+              const el = document.getElementById(`event-${eventId}`);
+              if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }, 1000);
+          }
         } else {
           localStorage.removeItem('worship_token');
-          router.push('/login');
+          router.push(`/login?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`);
         }
       } catch {
         localStorage.removeItem('worship_token');
-        router.push('/login');
+        router.push(`/login?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`);
       } finally {
         setLoading(false);
       }
@@ -785,7 +802,7 @@ export default function DashboardPage() {
                       {events.map((event) => {
                         const myStatus = event.rsvps.find(r => r.userId === user?.id)?.status || 'PENDING';
                         return (
-                        <div key={event.id} className="rounded-lg bg-white dark:bg-gray-800 p-6 shadow">
+                        <div key={event.id} id={`event-${event.id}`} className="rounded-lg bg-white dark:bg-gray-800 p-6 shadow">
                           <div className="flex justify-between items-start border-b border-gray-200 dark:border-gray-700 pb-4 mb-4">
                             <div>
                               <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{event.title}</h3>
