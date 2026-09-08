@@ -106,4 +106,24 @@ export class GroupsService {
       }
     });
   }
+
+  async joinGroup(userId: string, groupId: string) {
+    const existing = await this.prisma.groupMember.findUnique({
+      where: {
+        userId_groupId: { userId, groupId }
+      }
+    });
+
+    if (existing) {
+      return existing;
+    }
+
+    return this.prisma.groupMember.create({
+      data: {
+        userId,
+        groupId,
+        isAdmin: false
+      }
+    });
+  }
 }

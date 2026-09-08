@@ -27,4 +27,9 @@ export class GroupsController {
   addMember(@Req() req: any, @Param('id') groupId: string, @Body() dto: AddMemberDto) {
     return this.groupsService.addMember(req.user.sub, groupId, dto);
   }
+
+  @Post(':id/join')
+  joinGroup(@Req() req: any, @Param('id') groupId: string) {
+    return this.groupsService.joinGroup(req.user.sub, groupId);
+  }
 }

@@ -288,6 +288,29 @@ export default function DashboardPage() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const urlEventId = params.get('eventId');
+    const action = params.get('action');
+    const urlGroupId = params.get('groupId');
+    const token = localStorage.getItem('worship_token');
+
+    if (action === 'join' && urlGroupId && token) {
+      // Entrar automaticamente no grupo
+      fetch(`${process.env.NEXT_PUBLIC_API_URL}/groups/${urlGroupId}/join`, {
+        method: 'POST',
+        headers: {
+          'x-api-key': process.env.NEXT_PUBLIC_API_KEY || '',
+          'Authorization': `Bearer ${token}`
+        }
+      }).then(res => res.json()).then(data => {
+        if (data) {
+          showToast('Você entrou no ministério com sucesso!');
+          window.history.replaceState({}, '', '/dashboard');
+          window.location.reload();
+        }
+      }).catch(() => {
+        showToast('Erro ao entrar no ministério.');
+      });
+    }
+
     if (urlEventId && events.length > 0) {
       const exists = events.find(e => e.id === urlEventId);
       if (exists) {
@@ -1001,39 +1024,29 @@ export default function DashboardPage() {
       {/* Modal Adicionar Membro */}
       {showAddMember && activeGroup && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4" onClick={(e) => { if(e.target === e.currentTarget) setShowAddMember(false); }}>
-          <div className="w-full max-w-sm rounded-lg bg-white dark:bg-gray-800 p-6 shadow-xl">
+          <div className="w-full max-w-sm rounded-lg bg-white dark:bg-gray-800 p-6 shadow-xl text-center">
             <div className="flex justify-between items-start mb-4">
-              <h3 className="text-lg font-medium text-gray-900 dark:text-white">Adicionar Novo Membro</h3>
+              <h3 className="text-lg font-medium text-gray-900 dark:text-white">Convidar Membro</h3>
               <button onClick={() => setShowAddMember(false)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors p-1 -mt-1 -mr-1">
                 <X className="h-5 w-5" />
               </button>
             </div>
             
-            <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">
-              O usuário já deve ter criado uma conta no Worship Flow usando este e-mail.
+            <p className="text-sm text-gray-600 dark:text-gray-300 mb-6">
+              Compartilhe o link abaixo. Se a pessoa ainda não tiver conta, ela será orientada a criar uma e entrará no ministério automaticamente!
             </p>
 
-            <form onSubmit={handleAddMember} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">E-mail do Usuário</label>
-                <input
-                  type="email"
-                  required
-                  value={addMemberEmail}
-                  onChange={(e) => setAddMemberEmail(e.target.value)}
-                  className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2 border transition-colors"
-                  placeholder="exemplo@email.com"
-                />
-              </div>
-              <div className="mt-5 flex justify-end space-x-3">
-                <button type="button" onClick={() => setShowAddMember(false)} className="rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors">
-                  Cancelar
-                </button>
-                <button type="submit" className="rounded-md border border-transparent bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 transition-colors">
-                  Adicionar
-                </button>
-              </div>
-            </form>
+            <button 
+              onClick={() => {
+                const inviteUrl = `${window.location.origin}/dashboard?action=join&groupId=${activeGroup.id}`;
+                navigator.clipboard.writeText(`Convite para o Worship Flow! Acesse o link para entrar no ministério: ${inviteUrl}`);
+                showToast('Link de convite copiado!');
+                setShowAddMember(false);
+              }}
+              className="w-full mb-2 flex justify-center items-center gap-2 rounded-md bg-blue-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-blue-700 transition-colors"
+            >
+              Copiar Link de Convite
+            </button>
           </div>
         </div>
       )}
