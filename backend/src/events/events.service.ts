@@ -29,6 +29,17 @@ export class EventsService {
     });
   }
 
+  async deleteEvent(groupId: string, eventId: string) {
+    if (eventId.startsWith('virtual_')) {
+      // It's a virtual event, can't delete it directly. The user can delete the schedule instead.
+      return { success: true };
+    }
+    
+    return this.prisma.event.delete({
+      where: { id: eventId, groupId }
+    });
+  }
+
   async getEvents(groupId: string) {
     const today = new Date();
     today.setHours(0, 0, 0, 0);

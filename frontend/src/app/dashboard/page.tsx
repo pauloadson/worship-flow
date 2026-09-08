@@ -49,9 +49,10 @@ interface EventData {
   title: string;
   date: string;
   eventType?: string;
-  rsvps: EventRsvp[];
-  songs: EventSong[];
+  groupId: string;
   isVirtual?: boolean;
+  rsvps: EventRsvp[];
+  songs?: EventSong[];
 }
 
 interface Schedule {
@@ -340,6 +341,42 @@ export default function DashboardPage() {
             showToast('Agenda removida com sucesso!');
           } else {
             showToast('Erro ao remover agenda.');
+          }
+        } catch {
+          showToast('Erro na conexão');
+        }
+      }
+    });
+  };
+
+  const handleDeleteEvent = async (eventId: string, isVirtual: boolean) => {
+    if (isVirtual) {
+      showToast('Este é um evento gerado automaticamente pela Agenda Padrão. Exclua a Agenda se não quiser mais ele.');
+      return;
+    }
+
+    setConfirmDialog({
+      isOpen: true,
+      title: 'Excluir Evento',
+      message: 'Deseja realmente excluir este evento?',
+      onConfirm: async () => {
+        setConfirmDialog(null);
+        const token = localStorage.getItem('worship_token');
+        if (!token || !activeGroupId) return;
+
+        try {
+          const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/groups/${activeGroupId}/events/${eventId}`, {
+            method: 'DELETE',
+            headers: {
+              'x-api-key': process.env.NEXT_PUBLIC_API_KEY || '',
+              'Authorization': `Bearer ${token}`
+            }
+          });
+          if (res.ok) {
+            fetchEvents(activeGroupId, token);
+            showToast('Evento excluído com sucesso!');
+          } else {
+            showToast('Erro ao excluir evento.');
           }
         } catch {
           showToast('Erro na conexão');
@@ -818,6 +855,7 @@ export default function DashboardPage() {
                               <button onClick={() => handleRsvp(event.id, myStatus === 'DECLINED' ? 'PENDING' : 'DECLINED')} className={`rounded px-3 py-1 text-sm font-medium transition-colors ${myStatus === 'DECLINED' ? 'bg-red-600 text-white hover:bg-red-700' : 'bg-red-50 text-red-700 hover:bg-red-100'}`}>Ausente</button>
                               <button onClick={() => setManageEventId(event.id)} className="rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 px-3 py-1 text-sm font-medium transition-colors">⚙️ Escalar</button>
                               <button onClick={() => setShareEventId(event.id)} className="rounded border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/50 px-3 py-1 text-sm font-medium transition-colors">🔗 Enviar Link</button>
+                              <button onClick={() => handleDeleteEvent(event.id, !!event.isVirtual)} className="rounded border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/50 px-3 py-1 text-sm font-medium transition-colors">🗑️ Excluir</button>
                             </div>
                           </div>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
