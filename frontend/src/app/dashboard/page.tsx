@@ -103,6 +103,9 @@ export default function DashboardPage() {
   const [shareEventId, setShareEventId] = useState<string | null>(null);
   const shareEvent = events.find(e => e.id === shareEventId);
 
+  const [confirmPresenceEventId, setConfirmPresenceEventId] = useState<string | null>(null);
+  const confirmPresenceEvent = events.find(e => e.id === confirmPresenceEventId);
+
   const [confirmDialog, setConfirmDialog] = useState<{ isOpen: boolean, title: string, message: string, onConfirm: () => void } | null>(null);
 
   const [activeGroupId, setActiveGroupId] = useState<string | null>(null);
@@ -270,17 +273,26 @@ export default function DashboardPage() {
   useEffect(() => {
     const token = localStorage.getItem('worship_token');
     if (activeGroupId && token && !loading) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       fetchSongs(activeGroupId, token);
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       fetchEvents(activeGroupId, token);
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       fetchSchedules(activeGroupId, token);
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       fetchMembers(activeGroupId, token);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeGroupId, loading]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const urlEventId = params.get('eventId');
+    if (urlEventId && events.length > 0) {
+      const exists = events.find(e => e.id === urlEventId);
+      if (exists) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setConfirmPresenceEventId(urlEventId);
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [events.length]);
 
   const handleLogout = () => {
     localStorage.removeItem('worship_token');
@@ -1478,6 +1490,41 @@ export default function DashboardPage() {
               {members.length === 0 && (
                 <p className="text-sm text-gray-500 italic text-center py-2">Nenhum membro neste ministério.</p>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Confirmação Rápida */}
+      {confirmPresenceEventId && confirmPresenceEvent && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <div className="w-full max-w-sm rounded-xl bg-white dark:bg-gray-800 p-6 shadow-2xl text-center border border-gray-200 dark:border-gray-700">
+            <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Confirmar Presença</h3>
+            <p className="text-gray-600 dark:text-gray-300 mb-2">Você estará presente no evento:</p>
+            <p className="text-lg font-semibold text-blue-600 dark:text-blue-400 mb-1">{confirmPresenceEvent.title}</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">{new Date(confirmPresenceEvent.date).toLocaleString('pt-BR', { dateStyle: 'long', timeStyle: 'short' })}</p>
+            
+            <div className="flex flex-col gap-3">
+              <button onClick={async () => {
+                await handleRsvp(confirmPresenceEvent.id, 'CONFIRMED');
+                setConfirmPresenceEventId(null);
+                window.history.replaceState({}, '', '/dashboard?tab=eventos');
+              }} className="rounded-lg bg-green-600 px-4 py-3 text-sm font-bold text-white hover:bg-green-700 transition-colors">
+                Sim, estarei presente
+              </button>
+              <button onClick={async () => {
+                await handleRsvp(confirmPresenceEvent.id, 'DECLINED');
+                setConfirmPresenceEventId(null);
+                window.history.replaceState({}, '', '/dashboard?tab=eventos');
+              }} className="rounded-lg bg-red-600 px-4 py-3 text-sm font-bold text-white hover:bg-red-700 transition-colors">
+                Não poderei ir
+              </button>
+              <button onClick={() => {
+                setConfirmPresenceEventId(null);
+                window.history.replaceState({}, '', '/dashboard?tab=eventos');
+              }} className="mt-2 text-sm text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">
+                Responder depois
+              </button>
             </div>
           </div>
         </div>
