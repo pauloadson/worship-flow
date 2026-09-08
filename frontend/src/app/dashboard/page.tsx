@@ -1436,7 +1436,8 @@ export default function DashboardPage() {
 
             <button 
               onClick={() => {
-                const msg = `Olá! Gostaria de confirmar sua presença no ( *${shareEvent.title}*) que acontecerá no dia ${new Date(shareEvent.date).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}.\nPor favor, acesse o link para confirmar: ${window.location.origin}`;
+                const eventUrl = `${window.location.origin}/dashboard?tab=eventos&eventId=${shareEvent.id}`;
+                const msg = `Olá! Gostaria de confirmar sua presença no ( *${shareEvent.title}*) que acontecerá no dia ${new Date(shareEvent.date).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}.\nPor favor, acesse o link para confirmar: ${eventUrl}`;
                 navigator.clipboard.writeText(msg);
                 showToast('Mensagem e link copiados!');
               }}
@@ -1461,7 +1462,8 @@ export default function DashboardPage() {
                       disabled={!m.user.phone}
                       onClick={() => {
                         if (m.user.phone) {
-                          const msg = encodeURIComponent(`Olá ${m.user.name.split(' ')[0]}! Gostaria de confirmar sua presença no ( *${shareEvent.title}*) que acontecerá no dia ${new Date(shareEvent.date).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}.\nPor favor, acesse o link para confirmar: ${window.location.origin}`);
+                          const eventUrl = `${window.location.origin}/dashboard?tab=eventos&eventId=${shareEvent.id}`;
+                          const msg = encodeURIComponent(`Olá ${m.user.name.split(' ')[0]}! Gostaria de confirmar sua presença no ( *${shareEvent.title}*) que acontecerá no dia ${new Date(shareEvent.date).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}.\nPor favor, acesse o link para confirmar: ${eventUrl}`);
                           window.open(`https://wa.me/${m.user.phone.replace(/\D/g, '')}?text=${msg}`, '_blank');
                         }
                       }}
