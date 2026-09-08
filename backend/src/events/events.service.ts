@@ -48,6 +48,9 @@ export class EventsService {
               include: { user: { select: { name: true, id: true } } }
             }
           }
+        },
+        songs: {
+          include: { song: true }
         }
       }
     });
@@ -76,6 +79,7 @@ export class EventsService {
               eventType: sched.eventType,
               groupId: groupId,
               rsvps: [],
+              songs: [],
               isVirtual: true
             });
           }
@@ -86,44 +90,68 @@ export class EventsService {
     return [...realEvents, ...virtualEvents].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
   }
 
-  async updateRsvp(groupId: string, eventId: string, userId: string, status: string) {
-    let realEventId = eventId;
+  private async ensureRealEvent(groupId: string, eventId: string) {
+    if (!eventId.startsWith('virtual_')) return eventId;
     
-    if (eventId.startsWith('virtual_')) {
-      const parts = eventId.split('_');
-      const schedId = parts[1];
-      const timestamp = Number(parts[2]);
-      const date = new Date(timestamp);
-      
-      const sched = await this.prisma.recurringSchedule.findUnique({ where: { id: schedId } });
-      if (!sched) throw new Error('Schedule not found');
+    const parts = eventId.split('_');
+    const schedId = parts[1];
+    const timestamp = Number(parts[2]);
+    const date = new Date(timestamp);
+    
+    const sched = await this.prisma.recurringSchedule.findUnique({ where: { id: schedId } });
+    if (!sched) throw new Error('Schedule not found');
 
-      // Tentamos criar o evento real. Usamos createMany para não falhar se já existir (race condition).
-      // Como não tem createMany que retorna ID com facilidade no MySQL, usamos upsert.
-      const realEvent = await this.prisma.event.upsert({
-        where: { groupId_date: { groupId, date } },
-        update: {},
-        create: {
-          groupId,
-          title: sched.title,
-          date: date,
-          eventType: sched.eventType
-        }
-      });
-      realEventId = realEvent.id;
-    }
+    const realEvent = await this.prisma.event.upsert({
+      where: { groupId_date: { groupId, date } },
+      update: {},
+      create: {
+        groupId,
+        title: sched.title,
+        date: date,
+        eventType: sched.eventType
+      }
+    });
+    return realEvent.id;
+  }
+
+  async updateRsvp(groupId: string, eventId: string, userId: string, status?: string, role?: string) {
+    const realEventId = await this.ensureRealEvent(groupId, eventId);
+
+    const updateData: any = {};
+    if (status !== undefined) updateData.status = status;
+    if (role !== undefined) updateData.role = role;
 
     return this.prisma.eventRsvp.upsert({
       where: {
         eventId_userId: { eventId: realEventId, userId }
       },
-      update: { status },
+      update: updateData,
       create: {
         eventId: realEventId,
         userId,
         groupId,
-        status
+        status: status || 'CONFIRMED',
+        role
       }
+    });
+  }
+
+  async addSongToEvent(groupId: string, eventId: string, songId: string) {
+    const realEventId = await this.ensureRealEvent(groupId, eventId);
+    const count = await this.prisma.eventSong.count({ where: { eventId: realEventId } });
+    
+    return this.prisma.eventSong.create({
+      data: {
+        eventId: realEventId,
+        songId,
+        order: count
+      }
+    });
+  }
+
+  async removeSongFromEvent(groupId: string, eventId: string, songId: string) {
+    return this.prisma.eventSong.delete({
+      where: { eventId_songId: { eventId, songId } }
     });
   }
 

@@ -26,9 +26,30 @@ export class EventsController {
     @Param('groupId') groupId: string,
     @Param('eventId') eventId: string,
     @Body('status') status: string,
+    @Body('role') role: string,
+    @Body('userId') targetUserId: string,
     @Request() req: any
   ) {
-    return this.eventsService.updateRsvp(groupId, eventId, req.user.sub, status);
+    const userId = targetUserId || req.user.sub;
+    return this.eventsService.updateRsvp(groupId, eventId, userId, status, role);
+  }
+
+  @Post(':eventId/songs')
+  addSong(
+    @Param('groupId') groupId: string,
+    @Param('eventId') eventId: string,
+    @Body('songId') songId: string
+  ) {
+    return this.eventsService.addSongToEvent(groupId, eventId, songId);
+  }
+
+  @Delete(':eventId/songs/:songId')
+  removeSong(
+    @Param('groupId') groupId: string,
+    @Param('eventId') eventId: string,
+    @Param('songId') songId: string
+  ) {
+    return this.eventsService.removeSongFromEvent(groupId, eventId, songId);
   }
 
   @Get('schedules')

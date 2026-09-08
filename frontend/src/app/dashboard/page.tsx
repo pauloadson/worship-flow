@@ -26,9 +26,17 @@ interface Song {
   chords?: string;
 }
 
+interface EventSong {
+  id: string;
+  songId: string;
+  order: number;
+  song: Song;
+}
+
 interface EventRsvp {
   userId: string;
   status: string;
+  role?: string;
   member: {
     user: {
       name: string;
@@ -42,6 +50,8 @@ interface EventData {
   date: string;
   eventType?: string;
   rsvps: EventRsvp[];
+  songs: EventSong[];
+  isVirtual?: boolean;
 }
 
 interface Schedule {
@@ -73,6 +83,9 @@ export default function DashboardPage() {
   const [showConfigSchedule, setShowConfigSchedule] = useState(false);
   const [schedules, setSchedules] = useState<Schedule[]>([]);
   const [scheduleForm, setScheduleForm] = useState({ dayOfWeek: 0, time: '19:30', title: '', eventType: 'Culto' });
+
+  const [manageEventId, setManageEventId] = useState<string | null>(null);
+  const manageEvent = events.find(e => e.id === manageEventId);
 
   const [activeGroupId, setActiveGroupId] = useState<string | null>(null);
   const [showUserMenu, setShowUserMenu] = useState(false);
@@ -296,6 +309,71 @@ export default function DashboardPage() {
         showToast('Evento criado com sucesso!');
       } else {
         showToast('Erro ao criar evento. Apenas admins.');
+      }
+    } catch {
+      showToast('Erro na conexão');
+    }
+  };
+
+  const handleUpdateRole = async (eventId: string, userId: string, role: string) => {
+    const token = localStorage.getItem('worship_token');
+    if (!token || !activeGroupId) return;
+
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/groups/${activeGroupId}/events/${eventId}/rsvp`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': process.env.NEXT_PUBLIC_API_KEY || '',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ userId, role, status: 'CONFIRMED' })
+      });
+      if (res.ok) {
+        fetchEvents(activeGroupId, token);
+        showToast('Função atualizada!');
+      }
+    } catch {
+      showToast('Erro na conexão');
+    }
+  };
+
+  const handleAssignSong = async (eventId: string, songId: string) => {
+    const token = localStorage.getItem('worship_token');
+    if (!token || !activeGroupId) return;
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/groups/${activeGroupId}/events/${eventId}/songs`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': process.env.NEXT_PUBLIC_API_KEY || '',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ songId })
+      });
+      if (res.ok) {
+        fetchEvents(activeGroupId, token);
+        showToast('Música adicionada!');
+      }
+    } catch {
+      showToast('Erro na conexão');
+    }
+  };
+
+  const handleRemoveSongFromEvent = async (eventId: string, songId: string) => {
+    const token = localStorage.getItem('worship_token');
+    if (!token || !activeGroupId) return;
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/groups/${activeGroupId}/events/${eventId}/songs/${songId}`, {
+        method: 'DELETE',
+        headers: {
+          'x-api-key': process.env.NEXT_PUBLIC_API_KEY || '',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      if (res.ok) {
+        fetchEvents(activeGroupId, token);
+        showToast('Música removida!');
       }
     } catch {
       showToast('Erro na conexão');
@@ -675,22 +753,40 @@ export default function DashboardPage() {
                             <div className="flex space-x-2">
                               <button onClick={() => handleRsvp(event.id, 'CONFIRMED')} className="rounded bg-green-50 text-green-700 hover:bg-green-100 px-3 py-1 text-sm font-medium transition-colors">Confirmar</button>
                               <button onClick={() => handleRsvp(event.id, 'DECLINED')} className="rounded bg-red-50 text-red-700 hover:bg-red-100 px-3 py-1 text-sm font-medium transition-colors">Ausente</button>
+                              <button onClick={() => setManageEventId(event.id)} className="rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 px-3 py-1 text-sm font-medium transition-colors">⚙️ Escalar</button>
                             </div>
                           </div>
-                          <div>
-                            <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Presenças Confirmadas ({event.rsvps.filter(r => r.status === 'CONFIRMED').length})</h4>
-                            <div className="flex flex-wrap gap-2">
-                              {event.rsvps.filter(r => r.status === 'CONFIRMED').map(r => (
-                                <span key={r.userId} className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                  {r.member.user.name}
-                                </span>
-                              ))}
-                              {event.rsvps.filter(r => r.status === 'CONFIRMED').length === 0 && (
-                                <span className="text-sm text-gray-500 italic">Ninguém confirmou ainda.</span>
-                              )}
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                              <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Presenças Confirmadas ({event.rsvps.filter(r => r.status === 'CONFIRMED').length})</h4>
+                              <div className="flex flex-col gap-2">
+                                {event.rsvps.filter(r => r.status === 'CONFIRMED').map(r => (
+                                  <div key={r.userId} className="flex items-center text-sm bg-green-50 dark:bg-green-900/20 p-2 rounded">
+                                    <span className="font-medium text-green-800 dark:text-green-400">{r.member.user.name}</span>
+                                    {r.role && <span className="ml-2 px-2 py-0.5 rounded-full text-xs bg-green-200 text-green-900">{r.role}</span>}
+                                  </div>
+                                ))}
+                                {event.rsvps.filter(r => r.status === 'CONFIRMED').length === 0 && (
+                                  <span className="text-sm text-gray-500 italic">Ninguém confirmou ainda.</span>
+                                )}
+                              </div>
+                            </div>
+                            <div>
+                              <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Repertório ({event.songs?.length || 0})</h4>
+                              <div className="flex flex-col gap-2">
+                                {event.songs?.map(es => (
+                                  <div key={es.id} className="text-sm bg-blue-50 dark:bg-blue-900/20 p-2 rounded flex justify-between items-center">
+                                    <span className="font-medium text-blue-800 dark:text-blue-400">{es.song.title}</span>
+                                    <span className="text-xs text-blue-600 dark:text-blue-500">{es.song.artist}</span>
+                                  </div>
+                                ))}
+                                {(!event.songs || event.songs.length === 0) && (
+                                  <span className="text-sm text-gray-500 italic">Nenhuma música escalada.</span>
+                                )}
+                              </div>
                             </div>
                           </div>
-                          <div className="mt-4">
+                          <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
                             <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Ausências ({event.rsvps.filter(r => r.status === 'DECLINED').length})</h4>
                             <div className="flex flex-wrap gap-2">
                               {event.rsvps.filter(r => r.status === 'DECLINED').map(r => (
@@ -978,6 +1074,113 @@ export default function DashboardPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Gerenciar Evento (Escalar) */}
+      {manageEventId && manageEvent && activeGroup && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4" onClick={(e) => { if(e.target === e.currentTarget) setManageEventId(null); }}>
+          <div className="w-full max-w-2xl rounded-lg bg-white dark:bg-gray-800 p-6 shadow-xl max-h-[90vh] flex flex-col">
+            <div className="flex justify-between items-start mb-4 flex-shrink-0">
+              <div>
+                <h3 className="text-xl font-bold text-gray-900 dark:text-white">Escalar: {manageEvent.title}</h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400">{new Date(manageEvent.date).toLocaleString('pt-BR', { dateStyle: 'long', timeStyle: 'short' })}</p>
+              </div>
+              <button onClick={() => setManageEventId(null)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors p-1">
+                <X className="h-6 w-6" />
+              </button>
+            </div>
+            
+            <div className="flex-1 overflow-y-auto pr-2 space-y-8">
+              {/* Escalar Músicas */}
+              <div>
+                <h4 className="text-lg font-medium text-gray-900 dark:text-white mb-3">Repertório</h4>
+                <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
+                  <div className="flex gap-2 mb-4">
+                    <select 
+                      id="songSelect"
+                      className="flex-1 rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2 border transition-colors"
+                      defaultValue=""
+                    >
+                      <option value="" disabled>Selecione uma música do grupo...</option>
+                      {songs.filter(s => !manageEvent.songs?.find(es => es.songId === s.id)).map(s => (
+                        <option key={s.id} value={s.id}>{s.title} {s.artist ? `- ${s.artist}` : ''}</option>
+                      ))}
+                    </select>
+                    <button 
+                      onClick={() => {
+                        const select = document.getElementById('songSelect') as HTMLSelectElement;
+                        if (select.value) handleAssignSong(manageEvent.id, select.value);
+                      }}
+                      className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 transition-colors"
+                    >
+                      Adicionar
+                    </button>
+                  </div>
+
+                  <ul className="space-y-2">
+                    {manageEvent.songs?.map(es => (
+                      <li key={es.id} className="flex justify-between items-center bg-white dark:bg-gray-800 p-3 rounded border border-gray-200 dark:border-gray-700">
+                        <div>
+                          <span className="font-medium text-gray-900 dark:text-white">{es.song.title}</span>
+                          <span className="text-xs text-gray-500 dark:text-gray-400 ml-2">{es.song.artist}</span>
+                        </div>
+                        <button onClick={() => handleRemoveSongFromEvent(manageEvent.id, es.songId)} className="text-red-500 hover:text-red-700 text-sm font-medium">
+                          Remover
+                        </button>
+                      </li>
+                    ))}
+                    {(!manageEvent.songs || manageEvent.songs.length === 0) && (
+                      <p className="text-sm text-gray-500 italic text-center py-2">Nenhuma música adicionada ao repertório ainda.</p>
+                    )}
+                  </ul>
+                </div>
+              </div>
+
+              {/* Escalar Membros */}
+              <div>
+                <h4 className="text-lg font-medium text-gray-900 dark:text-white mb-3">Escala de Membros</h4>
+                <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">Apenas membros que confirmaram presença podem ser escalados.</p>
+                  
+                  <ul className="space-y-3">
+                    {manageEvent.rsvps.filter(r => r.status === 'CONFIRMED').map(r => (
+                      <li key={r.userId} className="flex flex-col sm:flex-row sm:items-center justify-between bg-white dark:bg-gray-800 p-3 rounded border border-gray-200 dark:border-gray-700 gap-3">
+                        <span className="font-medium text-gray-900 dark:text-white">{r.member.user.name}</span>
+                        <div className="flex gap-2">
+                          <input 
+                            type="text" 
+                            placeholder="Ex: Bateria, Vocal, Teclado..."
+                            defaultValue={r.role || ''}
+                            id={`role_${r.userId}`}
+                            className="w-full sm:w-48 rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-1.5 border transition-colors"
+                          />
+                          <button 
+                            onClick={() => {
+                              const input = document.getElementById(`role_${r.userId}`) as HTMLInputElement;
+                              handleUpdateRole(manageEvent.id, r.userId, input.value);
+                            }}
+                            className="rounded-md bg-green-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-green-700 transition-colors whitespace-nowrap"
+                          >
+                            Salvar
+                          </button>
+                        </div>
+                      </li>
+                    ))}
+                    {manageEvent.rsvps.filter(r => r.status === 'CONFIRMED').length === 0 && (
+                      <p className="text-sm text-gray-500 italic text-center py-2">Ninguém confirmou presença ainda.</p>
+                    )}
+                  </ul>
+                </div>
+              </div>
+            </div>
+            
+            <div className="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700 flex justify-end flex-shrink-0">
+              <button onClick={() => setManageEventId(null)} className="rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-6 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors">
+                Pronto
+              </button>
+            </div>
           </div>
         </div>
       )}

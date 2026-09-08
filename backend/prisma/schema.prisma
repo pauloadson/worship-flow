@@ -75,6 +75,7 @@ model Song {
   videoLessonUrl String?
   audioUrl       String?
   group          Group   @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  events         EventSong[]
 }
 
 model Event {
@@ -86,8 +87,21 @@ model Event {
   group     Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
 
   rsvps EventRsvp[]
+  songs EventSong[]
 
   @@unique([groupId, date])
+}
+
+model EventSong {
+  id      String @id @default(uuid())
+  eventId String
+  songId  String
+  order   Int    @default(0)
+
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  song  Song  @relation(fields: [songId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, songId])
 }
 
 model RecurringSchedule {
@@ -106,6 +120,7 @@ model EventRsvp {
   userId    String
   groupId   String
   status    String  @default("pending") // pending, accepted, declined
+  role      String? // e.g. "Bateria", "Vocal"
   tokenLink String? @unique
 
   event  Event       @relation(fields: [eventId], references: [id], onDelete: Cascade)
