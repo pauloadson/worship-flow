@@ -1,5 +1,5 @@
 import { Injectable, ForbiddenException } from '@nestjs/common';
-import { PrismaService } from '../prisma.service.js';
+import { PrismaService } from '../prisma/prisma.service.js';
 
 @Injectable()
 export class EventsService {
@@ -30,9 +30,17 @@ export class EventsService {
   }
 
   async getEvents(groupId: string) {
-    return this.prisma.event.findMany({
-      where: { groupId },
-      orderBy: { date: 'asc' },
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const in30Days = new Date(today);
+    in30Days.setDate(in30Days.getDate() + 30);
+
+    // Get real events
+    const realEvents = await this.prisma.event.findMany({
+      where: { 
+        groupId,
+        date: { gte: today, lte: in30Days }
+      },
       include: {
         rsvps: {
           include: {
@@ -43,20 +51,101 @@ export class EventsService {
         }
       }
     });
+
+    // Get recurring schedules
+    const schedules = await this.prisma.recurringSchedule.findMany({
+      where: { groupId }
+    });
+
+    const virtualEvents = [];
+    for (const sched of schedules) {
+      const [hour, minute] = sched.time.split(':').map(Number);
+      
+      for (let i = 0; i <= 30; i++) {
+        const d = new Date(today);
+        d.setDate(d.getDate() + i);
+        if (d.getDay() === sched.dayOfWeek) {
+          d.setHours(hour, minute, 0, 0);
+          
+          const exists = realEvents.find(re => re.date.getTime() === d.getTime());
+          if (!exists) {
+            virtualEvents.push({
+              id: `virtual_${sched.id}_${d.getTime()}`,
+              title: sched.title,
+              date: d,
+              eventType: sched.eventType,
+              groupId: groupId,
+              rsvps: [],
+              isVirtual: true
+            });
+          }
+        }
+      }
+    }
+
+    return [...realEvents, ...virtualEvents].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
   }
 
   async updateRsvp(groupId: string, eventId: string, userId: string, status: string) {
+    let realEventId = eventId;
+    
+    if (eventId.startsWith('virtual_')) {
+      const parts = eventId.split('_');
+      const schedId = parts[1];
+      const timestamp = Number(parts[2]);
+      const date = new Date(timestamp);
+      
+      const sched = await this.prisma.recurringSchedule.findUnique({ where: { id: schedId } });
+      if (!sched) throw new Error('Schedule not found');
+
+      // Tentamos criar o evento real. Usamos createMany para não falhar se já existir (race condition).
+      // Como não tem createMany que retorna ID com facilidade no MySQL, usamos upsert.
+      const realEvent = await this.prisma.event.upsert({
+        where: { groupId_date: { groupId, date } },
+        update: {},
+        create: {
+          groupId,
+          title: sched.title,
+          date: date,
+          eventType: sched.eventType
+        }
+      });
+      realEventId = realEvent.id;
+    }
+
     return this.prisma.eventRsvp.upsert({
       where: {
-        eventId_userId: { eventId, userId }
+        eventId_userId: { eventId: realEventId, userId }
       },
       update: { status },
       create: {
-        eventId,
+        eventId: realEventId,
         userId,
         groupId,
         status
       }
+    });
+  }
+
+  async getSchedules(groupId: string) {
+    return this.prisma.recurringSchedule.findMany({ where: { groupId }, orderBy: [{dayOfWeek: 'asc'}, {time: 'asc'}] });
+  }
+
+  async createSchedule(groupId: string, data: any) {
+    return this.prisma.recurringSchedule.create({
+      data: {
+        groupId,
+        dayOfWeek: parseInt(data.dayOfWeek),
+        time: data.time,
+        title: data.title,
+        eventType: data.eventType || 'Culto'
+      }
+    });
+  }
+
+  async deleteSchedule(groupId: string, scheduleId: string) {
+    return this.prisma.recurringSchedule.delete({
+      where: { id: scheduleId }
     });
   }
 }

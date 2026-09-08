@@ -44,6 +44,14 @@ interface EventData {
   rsvps: EventRsvp[];
 }
 
+interface Schedule {
+  id: string;
+  dayOfWeek: number;
+  time: string;
+  title: string;
+  eventType?: string;
+}
+
 export default function DashboardPage() {
   const [user, setUser] = useState<User | null>(null);
   const [groups, setGroups] = useState<Group[]>([]);
@@ -61,6 +69,10 @@ export default function DashboardPage() {
 
   const [showAddEvent, setShowAddEvent] = useState(false);
   const [eventForm, setEventForm] = useState({ title: '', date: '', eventType: 'Culto' });
+
+  const [showConfigSchedule, setShowConfigSchedule] = useState(false);
+  const [schedules, setSchedules] = useState<Schedule[]>([]);
+  const [scheduleForm, setScheduleForm] = useState({ dayOfWeek: 0, time: '19:30', title: '', eventType: 'Culto' });
 
   const [activeGroupId, setActiveGroupId] = useState<string | null>(null);
   const [showUserMenu, setShowUserMenu] = useState(false);
@@ -176,6 +188,22 @@ export default function DashboardPage() {
     }
   };
 
+  const fetchSchedules = async (groupId: string, token: string) => {
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/groups/${groupId}/events/schedules`, {
+        headers: {
+          'x-api-key': process.env.NEXT_PUBLIC_API_KEY || '',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      if (res.ok) {
+        setSchedules(await res.json());
+      }
+    } catch {
+      showToast('Erro ao carregar agendas');
+    }
+  };
+
   useEffect(() => {
     const token = localStorage.getItem('worship_token');
     if (activeGroupId && token && !loading) {
@@ -183,6 +211,8 @@ export default function DashboardPage() {
       fetchSongs(activeGroupId, token);
       // eslint-disable-next-line react-hooks/set-state-in-effect
       fetchEvents(activeGroupId, token);
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      fetchSchedules(activeGroupId, token);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeGroupId]);
@@ -190,6 +220,58 @@ export default function DashboardPage() {
   const handleLogout = () => {
     localStorage.removeItem('worship_token');
     router.push('/login');
+  };
+
+  const handleSaveSchedule = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!scheduleForm.title || !scheduleForm.time || !activeGroupId) return;
+    
+    const token = localStorage.getItem('worship_token');
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/groups/${activeGroupId}/events/schedules`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': process.env.NEXT_PUBLIC_API_KEY || '',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(scheduleForm)
+      });
+      if (res.ok) {
+        setScheduleForm({ dayOfWeek: 0, time: '19:30', title: '', eventType: 'Culto' });
+        if (token) fetchSchedules(activeGroupId, token);
+        showToast('Agenda padrão adicionada com sucesso!');
+      } else {
+        showToast('Erro ao adicionar agenda padrão.');
+      }
+    } catch {
+      showToast('Erro na conexão');
+    }
+  };
+
+  const handleDeleteSchedule = async (scheduleId: string) => {
+    if (!confirm('Deseja realmente remover esta agenda padrão?')) return;
+    const token = localStorage.getItem('worship_token');
+    if (!token || !activeGroupId) return;
+
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/groups/${activeGroupId}/events/schedules/${scheduleId}`, {
+        method: 'DELETE',
+        headers: {
+          'x-api-key': process.env.NEXT_PUBLIC_API_KEY || '',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      if (res.ok) {
+        fetchSchedules(activeGroupId, token);
+        fetchEvents(activeGroupId, token);
+        showToast('Agenda removida com sucesso!');
+      } else {
+        showToast('Erro ao remover agenda.');
+      }
+    } catch {
+      showToast('Erro na conexão');
+    }
   };
 
   const handleSaveEvent = async (e: React.FormEvent) => {
@@ -565,9 +647,14 @@ export default function DashboardPage() {
                 <div className="mt-8">
                   <div className="flex justify-between items-center mb-6">
                     <h2 className="text-xl font-medium text-gray-900 dark:text-white">Eventos & Escalas</h2>
-                    <button onClick={() => setShowAddEvent(true)} className="rounded-md border border-transparent bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 transition-colors">
-                      + Agendar Evento
-                    </button>
+                    <div className="space-x-3">
+                      <button onClick={() => setShowConfigSchedule(true)} className="rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors">
+                        ⚙️ Configurar Agenda Padrão
+                      </button>
+                      <button onClick={() => setShowAddEvent(true)} className="rounded-md border border-transparent bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 transition-colors">
+                        + Evento Avulso
+                      </button>
+                    </div>
                   </div>
                   
                   {events.length === 0 ? (
@@ -891,6 +978,111 @@ export default function DashboardPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Configurar Agenda Padrão */}
+      {showConfigSchedule && activeGroup && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4" onClick={(e) => { if(e.target === e.currentTarget) setShowConfigSchedule(false); }}>
+          <div className="w-full max-w-lg rounded-lg bg-white dark:bg-gray-800 p-6 shadow-xl max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-start mb-4">
+              <h3 className="text-lg font-medium text-gray-900 dark:text-white">Configurar Agenda Padrão</h3>
+              <button onClick={() => setShowConfigSchedule(false)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors p-1 -mt-1 -mr-1">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
+              Adicione os dias e horários em que os eventos se repetem semanalmente. Eles aparecerão automaticamente na aba de Eventos!
+            </p>
+
+            <form onSubmit={handleSaveSchedule} className="space-y-4 mb-8 bg-gray-50 dark:bg-gray-900 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
+              <h4 className="text-sm font-medium text-gray-900 dark:text-white mb-2">Adicionar Novo Horário</h4>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Título</label>
+                <input
+                  type="text"
+                  required
+                  value={scheduleForm.title}
+                  onChange={(e) => setScheduleForm({...scheduleForm, title: e.target.value})}
+                  className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2 border transition-colors"
+                  placeholder="Ex: Culto da Família"
+                />
+              </div>
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Dia</label>
+                  <select
+                    value={scheduleForm.dayOfWeek}
+                    onChange={(e) => setScheduleForm({...scheduleForm, dayOfWeek: Number(e.target.value)})}
+                    className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2 border transition-colors"
+                  >
+                    <option value={0}>Domingo</option>
+                    <option value={1}>Segunda</option>
+                    <option value={2}>Terça</option>
+                    <option value={3}>Quarta</option>
+                    <option value={4}>Quinta</option>
+                    <option value={5}>Sexta</option>
+                    <option value={6}>Sábado</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Horário</label>
+                  <input
+                    type="time"
+                    required
+                    value={scheduleForm.time}
+                    onChange={(e) => setScheduleForm({...scheduleForm, time: e.target.value})}
+                    className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2 border transition-colors"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Tipo</label>
+                  <select
+                    value={scheduleForm.eventType}
+                    onChange={(e) => setScheduleForm({...scheduleForm, eventType: e.target.value})}
+                    className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2 border transition-colors"
+                  >
+                    <option value="Culto">Culto</option>
+                    <option value="Ensaio">Ensaio</option>
+                    <option value="Reunião">Reunião</option>
+                  </select>
+                </div>
+              </div>
+              <div className="flex justify-end pt-2">
+                <button type="submit" className="rounded-md border border-transparent bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 transition-colors">
+                  Adicionar
+                </button>
+              </div>
+            </form>
+
+            <h4 className="text-sm font-medium text-gray-900 dark:text-white mb-3 border-b border-gray-200 dark:border-gray-700 pb-2">Agendas Cadastradas</h4>
+            {schedules.length === 0 ? (
+              <p className="text-sm text-gray-500 italic text-center py-4">Nenhuma agenda padrão cadastrada.</p>
+            ) : (
+              <ul className="space-y-3">
+                {schedules.map(sched => (
+                  <li key={sched.id} className="flex justify-between items-center bg-gray-50 dark:bg-gray-700/50 p-3 rounded-lg border border-gray-200 dark:border-gray-700">
+                    <div>
+                      <span className="font-medium text-gray-900 dark:text-white text-sm block">{sched.title}</span>
+                      <span className="text-xs text-gray-500 dark:text-gray-400">
+                        {['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'][sched.dayOfWeek]} às {sched.time} • {sched.eventType}
+                      </span>
+                    </div>
+                    <button onClick={() => handleDeleteSchedule(sched.id)} className="text-red-500 hover:text-red-700 text-sm font-medium p-2">
+                      Remover
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+            
+            <div className="mt-8 flex justify-end">
+              <button type="button" onClick={() => setShowConfigSchedule(false)} className="rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors">
+                Fechar
+              </button>
+            </div>
           </div>
         </div>
       )}

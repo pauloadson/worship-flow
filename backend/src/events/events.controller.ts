@@ -1,6 +1,6 @@
-import { Controller, Get, Post, Put, Body, Param, UseGuards, Request } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Body, Param, UseGuards, Request } from '@nestjs/common';
 import { EventsService } from './events.service.js';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
 
 @Controller('groups/:groupId/events')
 @UseGuards(JwtAuthGuard)
@@ -29,5 +29,26 @@ export class EventsController {
     @Request() req: any
   ) {
     return this.eventsService.updateRsvp(groupId, eventId, req.user.sub, status);
+  }
+
+  @Get('schedules')
+  getSchedules(@Param('groupId') groupId: string) {
+    return this.eventsService.getSchedules(groupId);
+  }
+
+  @Post('schedules')
+  createSchedule(
+    @Param('groupId') groupId: string,
+    @Body() data: any
+  ) {
+    return this.eventsService.createSchedule(groupId, data);
+  }
+
+  @Delete('schedules/:scheduleId')
+  deleteSchedule(
+    @Param('groupId') groupId: string,
+    @Param('scheduleId') scheduleId: string
+  ) {
+    return this.eventsService.deleteSchedule(groupId, scheduleId);
   }
 }

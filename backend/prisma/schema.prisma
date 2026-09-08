@@ -35,6 +35,7 @@ model Group {
   members GroupMember[]
   songs   Song[]
   events  Event[]
+  recurringSchedules RecurringSchedule[]
 }
 
 model Role {
@@ -85,6 +86,18 @@ model Event {
   group     Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
 
   rsvps EventRsvp[]
+
+  @@unique([groupId, date])
+}
+
+model RecurringSchedule {
+  id        String   @id @default(uuid())
+  groupId   String
+  dayOfWeek Int      // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+  time      String   // "HH:mm"
+  title     String
+  eventType String?
+  group     Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
 }
 
 model EventRsvp {
