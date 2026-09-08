@@ -87,6 +87,8 @@ export default function DashboardPage() {
   const [manageEventId, setManageEventId] = useState<string | null>(null);
   const manageEvent = events.find(e => e.id === manageEventId);
 
+  const [confirmDialog, setConfirmDialog] = useState<{ isOpen: boolean, title: string, message: string, onConfirm: () => void } | null>(null);
+
   const [activeGroupId, setActiveGroupId] = useState<string | null>(null);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -263,28 +265,35 @@ export default function DashboardPage() {
   };
 
   const handleDeleteSchedule = async (scheduleId: string) => {
-    if (!confirm('Deseja realmente remover esta agenda padrão?')) return;
-    const token = localStorage.getItem('worship_token');
-    if (!token || !activeGroupId) return;
+    setConfirmDialog({
+      isOpen: true,
+      title: 'Remover Agenda Padrão',
+      message: 'Deseja realmente remover esta agenda padrão? Os eventos já agendados não serão afetados, mas os próximos não serão mais gerados.',
+      onConfirm: async () => {
+        setConfirmDialog(null);
+        const token = localStorage.getItem('worship_token');
+        if (!token || !activeGroupId) return;
 
-    try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/groups/${activeGroupId}/events/schedules/${scheduleId}`, {
-        method: 'DELETE',
-        headers: {
-          'x-api-key': process.env.NEXT_PUBLIC_API_KEY || '',
-          'Authorization': `Bearer ${token}`
+        try {
+          const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/groups/${activeGroupId}/events/schedules/${scheduleId}`, {
+            method: 'DELETE',
+            headers: {
+              'x-api-key': process.env.NEXT_PUBLIC_API_KEY || '',
+              'Authorization': `Bearer ${token}`
+            }
+          });
+          if (res.ok) {
+            fetchSchedules(activeGroupId, token);
+            fetchEvents(activeGroupId, token);
+            showToast('Agenda removida com sucesso!');
+          } else {
+            showToast('Erro ao remover agenda.');
+          }
+        } catch {
+          showToast('Erro na conexão');
         }
-      });
-      if (res.ok) {
-        fetchSchedules(activeGroupId, token);
-        fetchEvents(activeGroupId, token);
-        showToast('Agenda removida com sucesso!');
-      } else {
-        showToast('Erro ao remover agenda.');
       }
-    } catch {
-      showToast('Erro na conexão');
-    }
+    });
   };
 
   const handleSaveEvent = async (e: React.FormEvent) => {
@@ -741,7 +750,9 @@ export default function DashboardPage() {
                     </div>
                   ) : (
                     <div className="grid gap-6">
-                      {events.map((event) => (
+                      {events.map((event) => {
+                        const myStatus = event.rsvps.find(r => r.userId === user?.id)?.status || 'PENDING';
+                        return (
                         <div key={event.id} className="rounded-lg bg-white dark:bg-gray-800 p-6 shadow">
                           <div className="flex justify-between items-start border-b border-gray-200 dark:border-gray-700 pb-4 mb-4">
                             <div>
@@ -751,8 +762,8 @@ export default function DashboardPage() {
                               </p>
                             </div>
                             <div className="flex space-x-2">
-                              <button onClick={() => handleRsvp(event.id, 'CONFIRMED')} className="rounded bg-green-50 text-green-700 hover:bg-green-100 px-3 py-1 text-sm font-medium transition-colors">Confirmar</button>
-                              <button onClick={() => handleRsvp(event.id, 'DECLINED')} className="rounded bg-red-50 text-red-700 hover:bg-red-100 px-3 py-1 text-sm font-medium transition-colors">Ausente</button>
+                              <button onClick={() => handleRsvp(event.id, myStatus === 'CONFIRMED' ? 'PENDING' : 'CONFIRMED')} className={`rounded px-3 py-1 text-sm font-medium transition-colors ${myStatus === 'CONFIRMED' ? 'bg-green-600 text-white hover:bg-green-700' : 'bg-green-50 text-green-700 hover:bg-green-100'}`}>Confirmar</button>
+                              <button onClick={() => handleRsvp(event.id, myStatus === 'DECLINED' ? 'PENDING' : 'DECLINED')} className={`rounded px-3 py-1 text-sm font-medium transition-colors ${myStatus === 'DECLINED' ? 'bg-red-600 text-white hover:bg-red-700' : 'bg-red-50 text-red-700 hover:bg-red-100'}`}>Ausente</button>
                               <button onClick={() => setManageEventId(event.id)} className="rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 px-3 py-1 text-sm font-medium transition-colors">⚙️ Escalar</button>
                             </div>
                           </div>
@@ -797,7 +808,8 @@ export default function DashboardPage() {
                             </div>
                           </div>
                         </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   )}
                 </div>
@@ -1097,23 +1109,28 @@ export default function DashboardPage() {
               <div>
                 <h4 className="text-lg font-medium text-gray-900 dark:text-white mb-3">Repertório</h4>
                 <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
-                  <div className="flex gap-2 mb-4">
-                    <select 
-                      id="songSelect"
+                  <div className="flex flex-col sm:flex-row gap-2 mb-4 relative">
+                    <input 
+                      list="songsList"
+                      id="songSearchInput"
                       className="flex-1 rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2 border transition-colors"
-                      defaultValue=""
-                    >
-                      <option value="" disabled>Selecione uma música do grupo...</option>
+                      placeholder="Buscar e selecionar música..."
+                    />
+                    <datalist id="songsList">
                       {songs.filter(s => !manageEvent.songs?.find(es => es.songId === s.id)).map(s => (
-                        <option key={s.id} value={s.id}>{s.title} {s.artist ? `- ${s.artist}` : ''}</option>
+                        <option key={s.id} value={`${s.title} ${s.artist ? `- ${s.artist}` : ''}`} />
                       ))}
-                    </select>
+                    </datalist>
                     <button 
                       onClick={() => {
-                        const select = document.getElementById('songSelect') as HTMLSelectElement;
-                        if (select.value) handleAssignSong(manageEvent.id, select.value);
+                        const input = document.getElementById('songSearchInput') as HTMLInputElement;
+                        const match = songs.find(s => `${s.title} ${s.artist ? `- ${s.artist}` : ''}` === input.value);
+                        if (match) {
+                          handleAssignSong(manageEvent.id, match.id);
+                          input.value = '';
+                        }
                       }}
-                      className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 transition-colors"
+                      className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 transition-colors whitespace-nowrap"
                     >
                       Adicionar
                     </button>
@@ -1179,6 +1196,24 @@ export default function DashboardPage() {
             <div className="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700 flex justify-end flex-shrink-0">
               <button onClick={() => setManageEventId(null)} className="rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-6 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors">
                 Pronto
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Global Confirm Modal */}
+      {confirmDialog?.isOpen && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4" onClick={(e) => { if(e.target === e.currentTarget) setConfirmDialog(null); }}>
+          <div className="w-full max-w-sm rounded-lg bg-white dark:bg-gray-800 p-6 shadow-xl text-center">
+            <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">{confirmDialog.title}</h3>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">{confirmDialog.message}</p>
+            <div className="flex space-x-3 justify-center">
+              <button onClick={() => setConfirmDialog(null)} className="rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors">
+                Cancelar
+              </button>
+              <button onClick={confirmDialog.onConfirm} className="rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 transition-colors">
+                Confirmar
               </button>
             </div>
           </div>
