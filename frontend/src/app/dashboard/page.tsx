@@ -303,7 +303,10 @@ export default function DashboardPage() {
       });
       if (res.ok) {
         setScheduleForm({ dayOfWeek: 0, time: '19:30', title: '', eventType: 'Culto' });
-        if (token) fetchSchedules(activeGroupId, token);
+        if (token) {
+          fetchSchedules(activeGroupId, token);
+          fetchEvents(activeGroupId, token);
+        }
         showToast('Agenda padrão adicionada com sucesso!');
       } else {
         showToast('Erro ao adicionar agenda padrão.');
