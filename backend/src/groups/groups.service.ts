@@ -45,6 +45,15 @@ export class GroupsService {
     });
   }
 
+  async getMembers(groupId: string) {
+    return this.prisma.groupMember.findMany({
+      where: { groupId },
+      include: {
+        user: { select: { id: true, name: true, email: true, phone: true } }
+      }
+    });
+  }
+
   async addMember(ownerId: string, groupId: string, dto: AddMemberDto) {
     // 1. Verifica se o grupo existe e se quem está adicionando é admin do grupo
     const membership = await this.prisma.groupMember.findUnique({

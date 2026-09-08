@@ -62,11 +62,23 @@ interface Schedule {
   eventType?: string;
 }
 
+interface GroupMember {
+  userId: string;
+  isAdmin: boolean;
+  user: {
+    id: string;
+    name: string;
+    email: string;
+    phone: string | null;
+  }
+}
+
 export default function DashboardPage() {
   const [user, setUser] = useState<User | null>(null);
   const [groups, setGroups] = useState<Group[]>([]);
   const [songs, setSongs] = useState<Song[]>([]);
   const [events, setEvents] = useState<EventData[]>([]);
+  const [members, setMembers] = useState<GroupMember[]>([]);
   
   const [loading, setLoading] = useState(true);
   const [showCreateGroup, setShowCreateGroup] = useState(false);
@@ -86,6 +98,9 @@ export default function DashboardPage() {
 
   const [manageEventId, setManageEventId] = useState<string | null>(null);
   const manageEvent = events.find(e => e.id === manageEventId);
+
+  const [shareEventId, setShareEventId] = useState<string | null>(null);
+  const shareEvent = events.find(e => e.id === shareEventId);
 
   const [confirmDialog, setConfirmDialog] = useState<{ isOpen: boolean, title: string, message: string, onConfirm: () => void } | null>(null);
 
@@ -170,7 +185,6 @@ export default function DashboardPage() {
 
           if (groupsData.length > 0) {
             setActiveGroupId(groupsData[0].id);
-            await fetchSongs(groupsData[0].id, token);
           }
         } else {
           localStorage.removeItem('worship_token');
@@ -219,6 +233,22 @@ export default function DashboardPage() {
     }
   };
 
+  const fetchMembers = async (groupId: string, token: string) => {
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/groups/${groupId}/members`, {
+        headers: {
+          'x-api-key': process.env.NEXT_PUBLIC_API_KEY || '',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      if (res.ok) {
+        setMembers(await res.json());
+      }
+    } catch {
+      showToast('Erro ao carregar membros');
+    }
+  };
+
   useEffect(() => {
     const token = localStorage.getItem('worship_token');
     if (activeGroupId && token && !loading) {
@@ -228,9 +258,11 @@ export default function DashboardPage() {
       fetchEvents(activeGroupId, token);
       // eslint-disable-next-line react-hooks/set-state-in-effect
       fetchSchedules(activeGroupId, token);
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      fetchMembers(activeGroupId, token);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeGroupId]);
+  }, [activeGroupId, loading]);
 
   const handleLogout = () => {
     localStorage.removeItem('worship_token');
@@ -765,6 +797,7 @@ export default function DashboardPage() {
                               <button onClick={() => handleRsvp(event.id, myStatus === 'CONFIRMED' ? 'PENDING' : 'CONFIRMED')} className={`rounded px-3 py-1 text-sm font-medium transition-colors ${myStatus === 'CONFIRMED' ? 'bg-green-600 text-white hover:bg-green-700' : 'bg-green-50 text-green-700 hover:bg-green-100'}`}>Confirmar</button>
                               <button onClick={() => handleRsvp(event.id, myStatus === 'DECLINED' ? 'PENDING' : 'DECLINED')} className={`rounded px-3 py-1 text-sm font-medium transition-colors ${myStatus === 'DECLINED' ? 'bg-red-600 text-white hover:bg-red-700' : 'bg-red-50 text-red-700 hover:bg-red-100'}`}>Ausente</button>
                               <button onClick={() => setManageEventId(event.id)} className="rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 px-3 py-1 text-sm font-medium transition-colors">⚙️ Escalar</button>
+                              <button onClick={() => setShareEventId(event.id)} className="rounded border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/50 px-3 py-1 text-sm font-medium transition-colors">🔗 Enviar Link</button>
                             </div>
                           </div>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1320,6 +1353,71 @@ export default function DashboardPage() {
               <button type="button" onClick={() => setShowConfigSchedule(false)} className="rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors">
                 Fechar
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Enviar Link Evento */}
+      {shareEventId && shareEvent && (
+        <div className="fixed inset-0 z-[55] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4" onClick={(e) => { if(e.target === e.currentTarget) setShareEventId(null); }}>
+          <div className="w-full max-w-md rounded-lg bg-white dark:bg-gray-800 p-6 shadow-xl">
+            <div className="flex justify-between items-start mb-4">
+              <div>
+                <h3 className="text-xl font-bold text-gray-900 dark:text-white">Convocar Participantes</h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400">{shareEvent.title}</p>
+              </div>
+              <button onClick={() => setShareEventId(null)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors p-1">
+                <X className="h-6 w-6" />
+              </button>
+            </div>
+            
+            <p className="text-sm text-gray-600 dark:text-gray-300 mb-6">
+              Envie um lembrete para os membros confirmarem ou recusarem a presença neste evento.
+            </p>
+
+            <button 
+              onClick={() => {
+                const msg = `Olá! Gostaria de confirmar sua presença no evento *${shareEvent.title}* que acontecerá no dia ${new Date(shareEvent.date).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}.\nPor favor, acesse o sistema para confirmar: ${window.location.origin}`;
+                navigator.clipboard.writeText(msg);
+                showToast('Mensagem e link copiados!');
+              }}
+              className="w-full mb-6 flex justify-center items-center gap-2 rounded-md bg-blue-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-blue-700 transition-colors"
+            >
+              Copiar Mensagem Genérica
+            </button>
+
+            <h4 className="text-sm font-medium text-gray-900 dark:text-white mb-3">Enviar no WhatsApp</h4>
+            <div className="max-h-60 overflow-y-auto pr-2 space-y-2">
+              {members.map(m => {
+                const isConfirmed = shareEvent.rsvps.find(r => r.userId === m.userId)?.status === 'CONFIRMED';
+                const isDeclined = shareEvent.rsvps.find(r => r.userId === m.userId)?.status === 'DECLINED';
+                return (
+                  <div key={m.userId} className="flex justify-between items-center bg-gray-50 dark:bg-gray-900 p-3 rounded-lg border border-gray-200 dark:border-gray-700">
+                    <div>
+                      <span className="font-medium text-gray-900 dark:text-white block">{m.user.name}</span>
+                      {isConfirmed && <span className="text-xs text-green-600 dark:text-green-400 font-medium">Já Confirmado</span>}
+                      {isDeclined && <span className="text-xs text-red-600 dark:text-red-400 font-medium">Já Ausente</span>}
+                    </div>
+                    <button 
+                      disabled={!m.user.phone}
+                      onClick={() => {
+                        if (m.user.phone) {
+                          const msg = encodeURIComponent(`Olá ${m.user.name.split(' ')[0]}! Gostaria de confirmar sua presença no evento *${shareEvent.title}* que acontecerá no dia ${new Date(shareEvent.date).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}.\nPor favor, acesse o sistema para confirmar: ${window.location.origin}`);
+                          window.open(`https://wa.me/${m.user.phone.replace(/\D/g, '')}?text=${msg}`, '_blank');
+                        }
+                      }}
+                      className="rounded-md border border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-900/50 px-3 py-1.5 text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      title={!m.user.phone ? "Usuário não possui telefone cadastrado" : ""}
+                    >
+                      WhatsApp
+                    </button>
+                  </div>
+                );
+              })}
+              {members.length === 0 && (
+                <p className="text-sm text-gray-500 italic text-center py-2">Nenhum membro neste ministério.</p>
+              )}
             </div>
           </div>
         </div>
