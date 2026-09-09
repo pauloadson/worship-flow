@@ -9,12 +9,13 @@ import { ApiKeyGuard } from './common/guards/api-key.guard.js';
 import { GroupsModule } from './groups/groups.module.js';
 import { SongsModule } from './songs/songs.module.js';
 import { EventsModule } from './events/events.module.js';
+import { StudyMaterialsModule } from './study-materials/study-materials.module.js';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     PrismaModule, 
-    AuthModule, GroupsModule, SongsModule, EventsModule
+    AuthModule, GroupsModule, SongsModule, EventsModule, StudyMaterialsModule
   ],
   controllers: [AppController],
   providers: [

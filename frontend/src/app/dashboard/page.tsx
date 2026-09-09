@@ -3,9 +3,10 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ThemeToggle } from '@/components/theme-toggle';
-import { X } from 'lucide-react';
+import { X, Calendar, Music, Users, Settings, Link as LinkIcon, Trash2, BookOpen, Phone } from 'lucide-react';
 
 interface User {
+  id: string;
   name: string;
   email: string;
 }
@@ -24,6 +25,7 @@ interface Song {
   videoLessonUrl?: string;
   lyrics?: string;
   chords?: string;
+  studyMaterials?: StudyMaterial[];
 }
 
 interface EventSong {
@@ -53,6 +55,7 @@ interface EventData {
   isVirtual?: boolean;
   rsvps: EventRsvp[];
   songs?: EventSong[];
+  studyMaterials?: StudyMaterial[];
 }
 
 interface Schedule {
@@ -74,12 +77,20 @@ interface GroupMember {
   }
 }
 
+interface StudyMaterial {
+  id: string;
+  title: string;
+  url: string;
+  createdAt: string;
+}
+
 export default function DashboardPage() {
   const [user, setUser] = useState<User | null>(null);
   const [groups, setGroups] = useState<Group[]>([]);
   const [songs, setSongs] = useState<Song[]>([]);
   const [events, setEvents] = useState<EventData[]>([]);
   const [members, setMembers] = useState<GroupMember[]>([]);
+  const [groupMaterials, setGroupMaterials] = useState<StudyMaterial[]>([]);
   
   const [loading, setLoading] = useState(true);
   const [showCreateGroup, setShowCreateGroup] = useState(false);
@@ -97,6 +108,9 @@ export default function DashboardPage() {
   const [schedules, setSchedules] = useState<Schedule[]>([]);
   const [scheduleForm, setScheduleForm] = useState({ dayOfWeek: 0, time: '19:30', title: '', eventType: 'Culto' });
 
+  const [showAddMaterial, setShowAddMaterial] = useState(false);
+  const [materialForm, setMaterialForm] = useState({ title: '', url: '', groupId: '', songId: '', eventId: '' });
+
   const [manageEventId, setManageEventId] = useState<string | null>(null);
   const manageEvent = events.find(e => e.id === manageEventId);
 
@@ -112,7 +126,7 @@ export default function DashboardPage() {
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'letra' | 'cifra'>('letra');
-  const [mainTab, setMainTab] = useState<'repertorio' | 'eventos' | 'membros'>('repertorio');
+  const [mainTab, setMainTab] = useState<'repertorio' | 'eventos' | 'membros' | 'materiais'>('repertorio');
 
   const router = useRouter();
 
@@ -134,16 +148,7 @@ export default function DashboardPage() {
     return () => document.removeEventListener('click', handleGlobalClick);
   }, []);
 
-  useEffect(() => {
-    const handleEsc = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        setShowAddSong(false);
-        setShowCreateGroup(false);
-      }
-    };
-    document.addEventListener('keydown', handleEsc);
-    return () => document.removeEventListener('keydown', handleEsc);
-  }, []);
+
 
   const fetchSongs = async (groupId: string, token: string) => {
     const songsRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/groups/${groupId}/songs`, {
@@ -163,9 +168,13 @@ export default function DashboardPage() {
     // Configura a aba inicial e rolagem baseada na URL
     const params = new URLSearchParams(window.location.search);
     const urlTab = params.get('tab');
-    if (urlTab === 'eventos' || urlTab === 'membros' || urlTab === 'musicas') {
+    if (urlTab === 'eventos' || urlTab === 'membros' || urlTab === 'materiais' || urlTab === 'repertorio') {
       // eslint-disable-next-line react-hooks/set-state-in-effect
-      setMainTab(urlTab);
+      setMainTab(urlTab as 'repertorio' | 'eventos' | 'membros' | 'materiais');
+    } else if (urlTab === 'musicas') {
+      // backward compatibility for 'musicas' in case there are old links
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setMainTab('repertorio');
     }
     const eventId = params.get('eventId');
 
@@ -270,6 +279,22 @@ export default function DashboardPage() {
     }
   };
 
+  const fetchMaterials = async (groupId: string, token: string) => {
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/study-materials?groupId=${groupId}`, {
+        headers: {
+          'x-api-key': process.env.NEXT_PUBLIC_API_KEY || '',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      if (res.ok) {
+        setGroupMaterials(await res.json());
+      }
+    } catch {
+      showToast('Erro ao carregar materiais');
+    }
+  };
+
   useEffect(() => {
     const token = localStorage.getItem('worship_token');
     if (activeGroupId && token && !loading) {
@@ -281,6 +306,8 @@ export default function DashboardPage() {
       fetchSchedules(activeGroupId, token);
       // eslint-disable-next-line react-hooks/set-state-in-effect
       fetchMembers(activeGroupId, token);
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      fetchMaterials(activeGroupId, token);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeGroupId, loading]);
@@ -455,6 +482,25 @@ export default function DashboardPage() {
   const [showAddMember, setShowAddMember] = useState(false);
   const [addMemberEmail, setAddMemberEmail] = useState('');
 
+  useEffect(() => {
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setShowAddSong(false);
+        setShowCreateGroup(false);
+        setShowAddEvent(false);
+        setShowAddMaterial(false);
+        setShowConfigSchedule(false);
+        setManageEventId(null);
+        setShareEventId(null);
+        setConfirmPresenceEventId(null);
+        setConfirmDialog(null);
+        setShowAddMember(false);
+      }
+    };
+    document.addEventListener('keydown', handleEsc);
+    return () => document.removeEventListener('keydown', handleEsc);
+  }, []);
+
   const handleAddMember = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!addMemberEmail || !activeGroupId) return;
@@ -607,7 +653,7 @@ export default function DashboardPage() {
 
   const handleSaveSong = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!songForm.title.trim() || !activeGroupId) return;
+    if (!songForm.title?.trim() || !activeGroupId) return;
     
     const token = localStorage.getItem('worship_token');
     const isEditing = !!selectedSong;
@@ -690,6 +736,39 @@ export default function DashboardPage() {
     if (!text) return;
     navigator.clipboard.writeText(text);
     showToast(`${label} copiada!`);
+  };
+
+  const handleSaveMaterial = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!materialForm.title || !materialForm.url) return;
+    
+    const token = localStorage.getItem('worship_token');
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/study-materials`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(materialForm),
+      });
+      if (res.ok) {
+        setShowAddMaterial(false);
+        const { groupId, songId, eventId } = materialForm;
+        setMaterialForm({ title: '', url: '', groupId: '', songId: '', eventId: '' });
+        
+        if (activeGroupId) {
+          if (groupId) await fetchMaterials(activeGroupId, token!);
+          if (songId) await fetchSongs(activeGroupId, token!);
+          if (eventId) await fetchEvents(activeGroupId, token!);
+        }
+        showToast('Material salvo com sucesso!');
+      } else {
+        showToast('Erro ao salvar material');
+      }
+    } catch {
+      showToast('Erro na conexão');
+    }
   };
 
   if (loading) {
@@ -820,6 +899,7 @@ export default function DashboardPage() {
                     <button onClick={() => setMainTab('repertorio')} className={`pb-4 text-sm font-medium transition-colors ${mainTab === 'repertorio' ? 'text-blue-600 border-b-2 border-blue-600 dark:text-blue-400 dark:border-blue-400' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'}`}>Músicas</button>
                     <button onClick={() => setMainTab('eventos')} className={`pb-4 text-sm font-medium transition-colors ${mainTab === 'eventos' ? 'text-blue-600 border-b-2 border-blue-600 dark:text-blue-400 dark:border-blue-400' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'}`}>Eventos & Escalas</button>
                     <button onClick={() => setMainTab('membros')} className={`pb-4 text-sm font-medium transition-colors ${mainTab === 'membros' ? 'text-blue-600 border-b-2 border-blue-600 dark:text-blue-400 dark:border-blue-400' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'}`}>Membros</button>
+                    <button onClick={() => setMainTab('materiais')} className={`pb-4 text-sm font-medium transition-colors ${mainTab === 'materiais' ? 'text-blue-600 border-b-2 border-blue-600 dark:text-blue-400 dark:border-blue-400' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'}`}>Materiais de Estudo</button>
                   </div>
                 </div>
               </div>
@@ -862,14 +942,14 @@ export default function DashboardPage() {
                 <div className="rounded-lg bg-white dark:bg-gray-800 p-6 shadow">
                   <h2 className="text-lg font-medium text-gray-900 dark:text-white">Ações Rápidas</h2>
                   <div className="mt-4 flex flex-col space-y-3">
-                    <button onClick={() => setMainTab('eventos')} className="rounded bg-blue-50 dark:bg-blue-900/30 px-4 py-2 text-sm font-medium text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors text-left">
-                      📅 Gerenciar Escalas
+                    <button onClick={() => setMainTab('eventos')} className="rounded bg-blue-50 dark:bg-blue-900/30 px-4 py-2 text-sm font-medium text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors text-left flex items-center gap-2">
+                      <Calendar className="w-4 h-4" /> Gerenciar Escalas
                     </button>
-                    <button onClick={() => { setSelectedSong(null); setEditMode(true); setSongForm({ title: '', artist: '', key: '', videoLessonUrl: '', lyrics: '', chords: '' }); setShowAddSong(true); }} className="rounded bg-blue-50 dark:bg-blue-900/30 px-4 py-2 text-sm font-medium text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors text-left">
-                      🎵 Adicionar Música
+                    <button onClick={() => { setSelectedSong(null); setEditMode(true); setSongForm({ title: '', artist: '', key: '', videoLessonUrl: '', lyrics: '', chords: '' }); setShowAddSong(true); }} className="rounded bg-blue-50 dark:bg-blue-900/30 px-4 py-2 text-sm font-medium text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors text-left flex items-center gap-2">
+                      <Music className="w-4 h-4" /> Adicionar Música
                     </button>
-                    <button onClick={() => { setMainTab('membros'); setShowAddMember(true); }} className="rounded bg-blue-50 dark:bg-blue-900/30 px-4 py-2 text-sm font-medium text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors text-left">
-                      👥 Convidar Membros
+                    <button onClick={() => { setMainTab('membros'); setShowAddMember(true); }} className="rounded bg-blue-50 dark:bg-blue-900/30 px-4 py-2 text-sm font-medium text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors text-left flex items-center gap-2">
+                      <Users className="w-4 h-4" /> Convidar Membros
                     </button>
                   </div>
                 </div>
@@ -913,13 +993,46 @@ export default function DashboardPage() {
               </>
               )}
 
+              {mainTab === 'materiais' && (
+                <div className="mt-8 rounded-lg bg-white dark:bg-gray-800 p-6 shadow">
+                  <div className="flex justify-between items-center mb-6">
+                    <h2 className="text-xl font-medium text-gray-900 dark:text-white">Materiais de Estudo do Grupo</h2>
+                    <button onClick={() => { setMaterialForm({ title: '', url: '', groupId: activeGroupId || '', songId: '', eventId: '' }); setShowAddMaterial(true); }} className="rounded-md border border-transparent bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 transition-colors">
+                      + Adicionar Link
+                    </button>
+                  </div>
+                  
+                  {groupMaterials.length === 0 ? (
+                    <p className="text-gray-500 dark:text-gray-400 italic">Nenhum material de estudo adicionado ainda.</p>
+                  ) : (
+                    <ul className="divide-y divide-gray-200 dark:divide-gray-700">
+                      {groupMaterials.map(mat => (
+                        <li key={mat.id} className="py-3 flex justify-between items-center hover:bg-gray-50 dark:hover:bg-gray-700/50 -mx-4 px-4 rounded transition-colors group">
+                          <div className="flex-1">
+                            <a href={mat.url} target="_blank" rel="noopener noreferrer" className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline">{mat.title}</a>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{mat.url}</p>
+                          </div>
+                          <button onClick={async () => {
+                            const token = localStorage.getItem('worship_token');
+                            await fetch(`${process.env.NEXT_PUBLIC_API_URL}/study-materials/${mat.id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
+                            if (activeGroupId) fetchMaterials(activeGroupId, token!);
+                          }} className="text-sm text-red-500 hover:text-red-700 opacity-0 group-hover:opacity-100 transition-opacity">
+                            Excluir
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )}
+
               {mainTab === 'eventos' && (
                 <div className="mt-8">
                   <div className="flex justify-between items-center mb-6">
                     <h2 className="text-xl font-medium text-gray-900 dark:text-white">Eventos & Escalas</h2>
                     <div className="space-x-3">
-                      <button onClick={() => setShowConfigSchedule(true)} className="rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors">
-                        ⚙️ Configurar Agenda Padrão
+                      <button onClick={() => setShowConfigSchedule(true)} className="rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors inline-flex items-center gap-2">
+                        <Settings className="w-4 h-4" /> Configurar Agenda Padrão
                       </button>
                       <button onClick={() => setShowAddEvent(true)} className="rounded-md border border-transparent bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 transition-colors">
                         + Evento Avulso
@@ -947,9 +1060,9 @@ export default function DashboardPage() {
                             <div className="flex space-x-2">
                               <button onClick={() => handleRsvp(event.id, myStatus === 'CONFIRMED' ? 'PENDING' : 'CONFIRMED')} className={`rounded px-3 py-1 text-sm font-medium transition-colors ${myStatus === 'CONFIRMED' ? 'bg-green-600 text-white hover:bg-green-700' : 'bg-green-50 text-green-700 hover:bg-green-100'}`}>Confirmar</button>
                               <button onClick={() => handleRsvp(event.id, myStatus === 'DECLINED' ? 'PENDING' : 'DECLINED')} className={`rounded px-3 py-1 text-sm font-medium transition-colors ${myStatus === 'DECLINED' ? 'bg-red-600 text-white hover:bg-red-700' : 'bg-red-50 text-red-700 hover:bg-red-100'}`}>Ausente</button>
-                              <button onClick={() => setManageEventId(event.id)} className="rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 px-3 py-1 text-sm font-medium transition-colors">⚙️ Escalar</button>
-                              <button onClick={() => setShareEventId(event.id)} className="rounded border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/50 px-3 py-1 text-sm font-medium transition-colors">🔗 Enviar Link</button>
-                              <button onClick={() => handleDeleteEvent(event.id, !!event.isVirtual)} className="rounded border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/50 px-3 py-1 text-sm font-medium transition-colors">🗑️ Excluir</button>
+                              <button onClick={() => setManageEventId(event.id)} className="rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 px-3 py-1 text-sm font-medium transition-colors inline-flex items-center gap-1.5"><Settings className="w-4 h-4" /> Escalar</button>
+                              <button onClick={() => setShareEventId(event.id)} className="rounded border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/50 px-3 py-1 text-sm font-medium transition-colors inline-flex items-center gap-1.5"><LinkIcon className="w-4 h-4" /> Enviar Link</button>
+                              <button onClick={() => handleDeleteEvent(event.id, !!event.isVirtual)} className="rounded border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/50 px-3 py-1 text-sm font-medium transition-colors inline-flex items-center gap-1.5"><Trash2 className="w-4 h-4" /> Excluir</button>
                             </div>
                           </div>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1024,7 +1137,7 @@ export default function DashboardPage() {
                               )}
                             </span>
                             <span className="text-sm text-gray-500 dark:text-gray-400">{member.user.email}</span>
-                            {member.user.phone && <span className="text-xs text-gray-400 mt-1">📱 {member.user.phone}</span>}
+                            {member.user.phone && <span className="text-xs text-gray-400 mt-1 flex items-center gap-1"><Phone className="w-3 h-3" /> {member.user.phone}</span>}
                           </div>
                           <div>
                             {/* Futuramente: Ações como Remover ou Alterar Função */}
@@ -1188,6 +1301,41 @@ export default function DashboardPage() {
                   </div>
                 )}
                 
+                <details className="group border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800">
+                  <summary className="flex justify-between items-center p-4 cursor-pointer list-none font-medium text-gray-900 dark:text-white">
+                    <span className="flex items-center gap-2"><BookOpen className="w-5 h-5 text-gray-500" /> Materiais de Estudo ({selectedSong?.studyMaterials?.length || 0})</span>
+                    <span className="transition group-open:rotate-180">▼</span>
+                  </summary>
+                  <div className="p-4 pt-0 border-t border-gray-100 dark:border-gray-700 mt-2">
+                    <div className="flex justify-end mb-4">
+                      <button onClick={() => { setMaterialForm({ title: '', url: '', groupId: '', songId: selectedSong?.id || '', eventId: '' }); setShowAddMaterial(true); }} className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline">
+                        + Adicionar Material
+                      </button>
+                    </div>
+                    {(!selectedSong?.studyMaterials || selectedSong.studyMaterials.length === 0) ? (
+                      <p className="text-sm text-gray-500 dark:text-gray-400 italic">Nenhum material adicionado a esta música.</p>
+                    ) : (
+                      <ul className="space-y-3">
+                        {selectedSong.studyMaterials.map(mat => (
+                          <li key={mat.id} className="flex justify-between items-center bg-gray-50 dark:bg-gray-700/50 p-3 rounded group/item">
+                            <div>
+                              <a href={mat.url} target="_blank" rel="noopener noreferrer" className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline">{mat.title}</a>
+                              <p className="text-xs text-gray-500 dark:text-gray-400 truncate max-w-[250px] sm:max-w-xs">{mat.url}</p>
+                            </div>
+                            <button onClick={async () => {
+                              const token = localStorage.getItem('worship_token');
+                              await fetch(`${process.env.NEXT_PUBLIC_API_URL}/study-materials/${mat.id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
+                              if (activeGroupId) fetchSongs(activeGroupId, token!);
+                            }} className="text-sm text-red-500 hover:text-red-700 opacity-0 group-hover/item:opacity-100 transition-opacity">
+                              Excluir
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                </details>
+                
                 {(selectedSong!.lyrics || selectedSong!.chords) && (
                   <div className="mt-6">
                     <div className="flex space-x-2 border-b border-gray-200 dark:border-gray-700 mb-4 pb-0">
@@ -1230,6 +1378,7 @@ export default function DashboardPage() {
                     )}
                   </div>
                 )}
+
 
                 <div className="mt-6 flex justify-end border-t border-gray-200 dark:border-gray-700 pt-4">
                   <button type="button" onClick={() => setShowAddSong(false)} className="rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-6 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors">
@@ -1397,6 +1546,38 @@ export default function DashboardPage() {
                     ))}
                     {(!manageEvent.songs || manageEvent.songs.length === 0) && (
                       <p className="text-sm text-gray-500 italic text-center py-2">Nenhuma música adicionada ao repertório ainda.</p>
+                    )}
+                  </ul>
+                </div>
+              </div>
+
+              {/* Materiais do Evento */}
+              <div>
+                <div className="flex justify-between items-center mb-3">
+                  <h4 className="text-lg font-medium text-gray-900 dark:text-white">Materiais de Estudo do Evento</h4>
+                  <button onClick={() => { setMaterialForm({ title: '', url: '', groupId: '', songId: '', eventId: manageEvent.id }); setShowAddMaterial(true); }} className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline">
+                    + Adicionar
+                  </button>
+                </div>
+                <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
+                  <ul className="space-y-2">
+                    {manageEvent.studyMaterials?.map(mat => (
+                      <li key={mat.id} className="flex justify-between items-center bg-white dark:bg-gray-800 p-3 rounded border border-gray-200 dark:border-gray-700 group">
+                        <div className="flex-1">
+                          <a href={mat.url} target="_blank" rel="noopener noreferrer" className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline block">{mat.title}</a>
+                          <span className="text-xs text-gray-500 dark:text-gray-400 truncate block max-w-[200px] sm:max-w-xs">{mat.url}</span>
+                        </div>
+                        <button onClick={async () => {
+                          const token = localStorage.getItem('worship_token');
+                          await fetch(`${process.env.NEXT_PUBLIC_API_URL}/study-materials/${mat.id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
+                          if (activeGroupId) fetchEvents(activeGroupId, token!);
+                        }} className="text-sm text-red-500 hover:text-red-700 opacity-0 group-hover:opacity-100 transition-opacity">
+                          Excluir
+                        </button>
+                      </li>
+                    ))}
+                    {(!manageEvent.studyMaterials || manageEvent.studyMaterials.length === 0) && (
+                      <p className="text-sm text-gray-500 italic text-center py-2">Nenhum material adicionado a este evento.</p>
                     )}
                   </ul>
                 </div>
@@ -1670,6 +1851,52 @@ export default function DashboardPage() {
                 Responder depois
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Adicionar Material */}
+      {showAddMaterial && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4" onClick={(e) => { if(e.target === e.currentTarget) setShowAddMaterial(false); }}>
+          <div className="w-full max-w-md rounded-lg bg-white dark:bg-gray-800 p-6 shadow-xl">
+            <div className="flex justify-between items-start mb-4">
+              <h3 className="text-lg font-medium text-gray-900 dark:text-white">Adicionar Material de Estudo</h3>
+              <button onClick={() => setShowAddMaterial(false)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors p-1 -mt-1 -mr-1">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <form onSubmit={handleSaveMaterial} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Título</label>
+                <input
+                  type="text"
+                  required
+                  value={materialForm.title}
+                  onChange={(e) => setMaterialForm({...materialForm, title: e.target.value})}
+                  className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2 border transition-colors"
+                  placeholder="Ex: Aula de Canto, Técnica de Violão"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">URL / Link</label>
+                <input
+                  type="url"
+                  required
+                  value={materialForm.url}
+                  onChange={(e) => setMaterialForm({...materialForm, url: e.target.value})}
+                  className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2 border transition-colors"
+                  placeholder="https://youtube.com/..."
+                />
+              </div>
+              <div className="mt-5 flex justify-end space-x-3 pt-4 border-t border-gray-200 dark:border-gray-700">
+                <button type="button" onClick={() => setShowAddMaterial(false)} className="rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors">
+                  Cancelar
+                </button>
+                <button type="submit" className="rounded-md border border-transparent bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 transition-colors">
+                  Salvar
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

@@ -36,6 +36,7 @@ model Group {
   songs   Song[]
   events  Event[]
   recurringSchedules RecurringSchedule[]
+  studyMaterials StudyMaterial[]
 }
 
 model Role {
@@ -76,6 +77,7 @@ model Song {
   audioUrl       String?
   group          Group   @relation(fields: [groupId], references: [id], onDelete: Cascade)
   events         EventSong[]
+  studyMaterials StudyMaterial[]
 }
 
 model Event {
@@ -88,6 +90,7 @@ model Event {
 
   rsvps EventRsvp[]
   songs EventSong[]
+  studyMaterials StudyMaterial[]
 
   @@unique([groupId, date])
 }
@@ -127,4 +130,22 @@ model EventRsvp {
   member GroupMember @relation(fields: [userId, groupId], references: [userId, groupId], onDelete: Cascade)
 
   @@unique([eventId, userId])
+}
+
+model StudyMaterial {
+  id        String   @id @default(uuid())
+  title     String
+  url       String
+
+  groupId   String?
+  group     Group?   @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  songId    String?
+  song      Song?    @relation(fields: [songId], references: [id], onDelete: Cascade)
+
+  eventId   String?
+  event     Event?   @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }

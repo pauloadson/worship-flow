@@ -22,6 +22,7 @@ export class SongsService {
 
     return this.prisma.song.findMany({
       where: { groupId },
+      include: { studyMaterials: true },
       orderBy: { title: 'asc' },
     });
   }

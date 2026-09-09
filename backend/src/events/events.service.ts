@@ -62,7 +62,8 @@ export class EventsService {
         },
         songs: {
           include: { song: true }
-        }
+        },
+        studyMaterials: true
       }
     });
 
@@ -91,6 +92,7 @@ export class EventsService {
               groupId: groupId,
               rsvps: [],
               songs: [],
+              studyMaterials: [],
               isVirtual: true
             });
           }
