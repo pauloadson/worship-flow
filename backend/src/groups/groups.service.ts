@@ -45,7 +45,19 @@ export class GroupsService {
     });
   }
 
-  async getMembers(groupId: string) {
+  private async verifyMembership(userId: string, groupId: string) {
+    const member = await this.prisma.groupMember.findUnique({
+      where: { userId_groupId: { userId, groupId } },
+    });
+    if (!member) {
+      throw new ForbiddenException('Você não faz parte deste ministério.');
+    }
+    return member;
+  }
+
+  async getMembers(userId: string, groupId: string) {
+    await this.verifyMembership(userId, groupId);
+
     return this.prisma.groupMember.findMany({
       where: { groupId },
       include: {

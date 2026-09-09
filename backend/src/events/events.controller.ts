@@ -8,8 +8,8 @@ export class EventsController {
   constructor(private readonly eventsService: EventsService) {}
 
   @Get()
-  getEvents(@Param('groupId') groupId: string) {
-    return this.eventsService.getEvents(groupId);
+  getEvents(@Request() req: any, @Param('groupId') groupId: string) {
+    return this.eventsService.getEvents(req.user.sub, groupId);
   }
 
   @Post()
@@ -23,10 +23,11 @@ export class EventsController {
 
   @Delete(':eventId')
   deleteEvent(
+    @Request() req: any,
     @Param('groupId') groupId: string,
     @Param('eventId') eventId: string
   ) {
-    return this.eventsService.deleteEvent(groupId, eventId);
+    return this.eventsService.deleteEvent(req.user.sub, groupId, eventId);
   }
 
   @Put(':eventId/rsvp')
@@ -39,45 +40,50 @@ export class EventsController {
     @Request() req: any
   ) {
     const userId = targetUserId || req.user.sub;
-    return this.eventsService.updateRsvp(groupId, eventId, userId, status, role);
+    // We pass req.user.sub to verify if the requester has permission to update this RSVP
+    return this.eventsService.updateRsvp(req.user.sub, groupId, eventId, userId, status, role);
   }
 
   @Post(':eventId/songs')
   addSong(
+    @Request() req: any,
     @Param('groupId') groupId: string,
     @Param('eventId') eventId: string,
     @Body('songId') songId: string
   ) {
-    return this.eventsService.addSongToEvent(groupId, eventId, songId);
+    return this.eventsService.addSongToEvent(req.user.sub, groupId, eventId, songId);
   }
 
   @Delete(':eventId/songs/:songId')
   removeSong(
+    @Request() req: any,
     @Param('groupId') groupId: string,
     @Param('eventId') eventId: string,
     @Param('songId') songId: string
   ) {
-    return this.eventsService.removeSongFromEvent(groupId, eventId, songId);
+    return this.eventsService.removeSongFromEvent(req.user.sub, groupId, eventId, songId);
   }
 
   @Get('schedules')
-  getSchedules(@Param('groupId') groupId: string) {
-    return this.eventsService.getSchedules(groupId);
+  getSchedules(@Request() req: any, @Param('groupId') groupId: string) {
+    return this.eventsService.getSchedules(req.user.sub, groupId);
   }
 
   @Post('schedules')
   createSchedule(
+    @Request() req: any,
     @Param('groupId') groupId: string,
     @Body() data: any
   ) {
-    return this.eventsService.createSchedule(groupId, data);
+    return this.eventsService.createSchedule(req.user.sub, groupId, data);
   }
 
   @Delete('schedules/:scheduleId')
   deleteSchedule(
+    @Request() req: any,
     @Param('groupId') groupId: string,
     @Param('scheduleId') scheduleId: string
   ) {
-    return this.eventsService.deleteSchedule(groupId, scheduleId);
+    return this.eventsService.deleteSchedule(req.user.sub, groupId, scheduleId);
   }
 }

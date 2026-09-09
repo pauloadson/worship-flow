@@ -5,19 +5,28 @@ import { PrismaService } from '../prisma/prisma.service.js';
 export class EventsService {
   constructor(private prisma: PrismaService) {}
 
-  async createEvent(groupId: string, data: any, userId: string) {
-    // Verificamos se é admin
+  private async verifyMembership(userId: string, groupId: string) {
     const member = await this.prisma.groupMember.findUnique({
-      where: { userId_groupId: { userId, groupId } }
+      where: { userId_groupId: { userId, groupId } },
     });
-    
-    if (!member || !member.isAdmin) {
-      // Como o owner tem isAdmin=true ao criar, isso vai cobrir. Mas para garantir, podemos buscar o ownerId do group:
+    if (!member) {
+      throw new ForbiddenException('Você não faz parte deste ministério.');
+    }
+    return member;
+  }
+
+  private async verifyAdmin(userId: string, groupId: string) {
+    const member = await this.verifyMembership(userId, groupId);
+    if (!member.isAdmin) {
       const group = await this.prisma.group.findUnique({ where: { id: groupId } });
-      if (group?.ownerId !== userId && !member?.isAdmin) {
-        throw new ForbiddenException('Apenas administradores podem criar eventos.');
+      if (group?.ownerId !== userId) {
+        throw new ForbiddenException('Apenas administradores podem realizar esta ação.');
       }
     }
+  }
+
+  async createEvent(groupId: string, data: any, userId: string) {
+    await this.verifyAdmin(userId, groupId);
 
     return this.prisma.event.create({
       data: {
@@ -29,7 +38,9 @@ export class EventsService {
     });
   }
 
-  async deleteEvent(groupId: string, eventId: string) {
+  async deleteEvent(userId: string, groupId: string, eventId: string) {
+    await this.verifyAdmin(userId, groupId);
+
     if (eventId.startsWith('virtual_')) {
       // It's a virtual event, can't delete it directly. The user can delete the schedule instead.
       return { success: true };
@@ -40,7 +51,9 @@ export class EventsService {
     });
   }
 
-  async getEvents(groupId: string) {
+  async getEvents(userId: string, groupId: string) {
+    await this.verifyMembership(userId, groupId);
+
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const in30Days = new Date(today);
@@ -127,7 +140,13 @@ export class EventsService {
     return realEvent.id;
   }
 
-  async updateRsvp(groupId: string, eventId: string, userId: string, status?: string, role?: string) {
+  async updateRsvp(requesterUserId: string, groupId: string, eventId: string, targetUserId: string, status?: string, role?: string) {
+    await this.verifyMembership(requesterUserId, groupId);
+    
+    if (requesterUserId !== targetUserId) {
+      await this.verifyAdmin(requesterUserId, groupId);
+    }
+
     const realEventId = await this.ensureRealEvent(groupId, eventId);
 
     const updateData: any = {};
@@ -136,12 +155,12 @@ export class EventsService {
 
     return this.prisma.eventRsvp.upsert({
       where: {
-        eventId_userId: { eventId: realEventId, userId }
+        eventId_userId: { eventId: realEventId, userId: targetUserId }
       },
       update: updateData,
       create: {
         eventId: realEventId,
-        userId,
+        userId: targetUserId,
         groupId,
         status: status || 'CONFIRMED',
         role
@@ -149,7 +168,9 @@ export class EventsService {
     });
   }
 
-  async addSongToEvent(groupId: string, eventId: string, songId: string) {
+  async addSongToEvent(userId: string, groupId: string, eventId: string, songId: string) {
+    await this.verifyAdmin(userId, groupId);
+
     const realEventId = await this.ensureRealEvent(groupId, eventId);
     const count = await this.prisma.eventSong.count({ where: { eventId: realEventId } });
     
@@ -162,17 +183,21 @@ export class EventsService {
     });
   }
 
-  async removeSongFromEvent(groupId: string, eventId: string, songId: string) {
+  async removeSongFromEvent(userId: string, groupId: string, eventId: string, songId: string) {
+    await this.verifyAdmin(userId, groupId);
+
     return this.prisma.eventSong.delete({
       where: { eventId_songId: { eventId, songId } }
     });
   }
 
-  async getSchedules(groupId: string) {
+  async getSchedules(userId: string, groupId: string) {
+    await this.verifyMembership(userId, groupId);
     return this.prisma.recurringSchedule.findMany({ where: { groupId }, orderBy: [{dayOfWeek: 'asc'}, {time: 'asc'}] });
   }
 
-  async createSchedule(groupId: string, data: any) {
+  async createSchedule(userId: string, groupId: string, data: any) {
+    await this.verifyAdmin(userId, groupId);
     return this.prisma.recurringSchedule.create({
       data: {
         groupId,
@@ -184,7 +209,8 @@ export class EventsService {
     });
   }
 
-  async deleteSchedule(groupId: string, scheduleId: string) {
+  async deleteSchedule(userId: string, groupId: string, scheduleId: string) {
+    await this.verifyAdmin(userId, groupId);
     return this.prisma.recurringSchedule.delete({
       where: { id: scheduleId }
     });

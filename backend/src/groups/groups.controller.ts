@@ -19,8 +19,8 @@ export class GroupsController {
   }
 
   @Get(':id/members')
-  getMembers(@Param('id') groupId: string) {
-    return this.groupsService.getMembers(groupId);
+  getMembers(@Req() req: any, @Param('id') groupId: string) {
+    return this.groupsService.getMembers(req.user.sub, groupId);
   }
 
   @Post(':id/members')
