@@ -2,6 +2,18 @@
 
 Bem-vindo ao repositório do **Worship Flow**! Este projeto é um Web App focado na gestão de equipes musicais e ministérios de louvor, desenhado para resolver problemas de desengajamento causados por ruídos de comunicação.
 
+## Funcionalidades
+
+O sistema foi desenvolvido para facilitar a organização de ministérios de louvor através das seguintes funcionalidades:
+
+- **Gestão de Ministérios/Grupos:** Crie e gerencie grupos de louvor, adicione membros e defina permissões de administrador.
+- **Gestão de Membros e Funções:** Atribua funções ou instrumentos específicos (ex: Bateria, Vocal, Violão) para cada integrante do grupo.
+- **Repertório Centralizado:** Cadastre músicas contendo detalhes como tom, letra, cifra, links para partituras, videoaulas e áudios de referência.
+- **Gestão de Eventos (Escalas):** Agende eventos (Cultos, Ensaios, etc.) e configure **Agendamentos Recorrentes** para automatizar a criação de compromissos frequentes.
+- **Setlists:** Selecione e ordene as músicas do seu repertório para cada evento.
+- **Confirmação de Presença (RSVP):** Escale os membros para os eventos. Os escalados podem aceitar ou recusar a participação, garantindo previsibilidade para o líder.
+- **Materiais de Estudo:** Anexe links e conteúdos de estudo que podem ser vinculados diretamente a uma música, a um evento ou ao grupo como um todo.
+
 ## Estrutura do Monorepo
 
 O projeto está organizado como um monorepo utilizando [Turborepo](https://turbo.build/) e `pnpm`.
