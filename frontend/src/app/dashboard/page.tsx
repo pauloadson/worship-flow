@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ThemeToggle } from '@/components/theme-toggle';
-import { X, Calendar, Music, Users, Settings, Link as LinkIcon, Trash2, BookOpen, Phone } from 'lucide-react';
+import { X, Calendar, Music, Users, Settings, Link as LinkIcon, Trash2, BookOpen, Phone, Share2 } from 'lucide-react';
 
 interface User {
   id: string;
@@ -732,6 +732,30 @@ export default function DashboardPage() {
     showToast('Informações copiadas!');
   };
 
+  const handleShareEventRepertoire = (event: EventData) => {
+    if (!event || !event.songs || event.songs.length === 0) {
+      showToast('Nenhuma música neste evento.');
+      return;
+    }
+    
+    let text = `*Repertório: ${event.title}*\n*Data:* ${new Date(event.date).toLocaleDateString('pt-BR')}\n\n`;
+    
+    event.songs.forEach((es: EventSong, index: number) => {
+      const song = es.song;
+      text += `${index + 1}. *${song.title}* ${song.artist ? `(${song.artist})` : ''} ${song.key ? `- Tom: ${song.key}` : ''}\n`;
+      if (song.videoLessonUrl) text += `   Link: ${song.videoLessonUrl}\n`;
+    });
+    if (event.studyMaterials && event.studyMaterials.length > 0) {
+      text += `\n*Materiais de Estudo do Evento:*\n`;
+      event.studyMaterials.forEach((mat) => {
+        text += `- ${mat.title}: ${mat.url}\n`;
+      });
+    }
+    
+    navigator.clipboard.writeText(text);
+    showToast('Repertório copiado!');
+  };
+
   const handleCopyText = (text: string, label: string) => {
     if (!text) return;
     navigator.clipboard.writeText(text);
@@ -748,6 +772,7 @@ export default function DashboardPage() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'x-api-key': process.env.NEXT_PUBLIC_API_KEY || '',
           'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify(materialForm),
@@ -1014,7 +1039,7 @@ export default function DashboardPage() {
                           </div>
                           <button onClick={async () => {
                             const token = localStorage.getItem('worship_token');
-                            await fetch(`${process.env.NEXT_PUBLIC_API_URL}/study-materials/${mat.id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
+                            await fetch(`${process.env.NEXT_PUBLIC_API_URL}/study-materials/${mat.id}`, { method: 'DELETE', headers: { 'x-api-key': process.env.NEXT_PUBLIC_API_KEY || '', 'Authorization': `Bearer ${token}` } });
                             if (activeGroupId) fetchMaterials(activeGroupId, token!);
                           }} className="text-sm text-red-500 hover:text-red-700 opacity-0 group-hover:opacity-100 transition-opacity">
                             Excluir
@@ -1081,7 +1106,14 @@ export default function DashboardPage() {
                               </div>
                             </div>
                             <div>
-                              <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Repertório ({event.songs?.length || 0})</h4>
+                              <div className="flex justify-between items-center mb-2">
+                                <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300">Repertório ({event.songs?.length || 0})</h4>
+                                {event.songs && event.songs.length > 0 && (
+                                  <button onClick={(e) => { e.stopPropagation(); handleShareEventRepertoire(event); }} className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 text-xs font-medium inline-flex items-center gap-1">
+                                    <Share2 className="w-3 h-3" /> Compartilhar
+                                  </button>
+                                )}
+                              </div>
                               <div className="flex flex-col gap-2">
                                 {event.songs?.map(es => (
                                   <div key={es.id} className="text-sm bg-blue-50 dark:bg-blue-900/20 p-2 rounded flex justify-between items-center">
@@ -1090,7 +1122,9 @@ export default function DashboardPage() {
                                   </div>
                                 ))}
                                 {(!event.songs || event.songs.length === 0) && (
-                                  <span className="text-sm text-gray-500 italic">Nenhuma música escalada.</span>
+                                  <button onClick={() => setManageEventId(event.id)} className="text-sm text-blue-600 dark:text-blue-400 hover:underline italic text-left">
+                                    + Adicionar músicas ao repertório
+                                  </button>
                                 )}
                               </div>
                             </div>
@@ -1324,7 +1358,7 @@ export default function DashboardPage() {
                             </div>
                             <button onClick={async () => {
                               const token = localStorage.getItem('worship_token');
-                              await fetch(`${process.env.NEXT_PUBLIC_API_URL}/study-materials/${mat.id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
+                              await fetch(`${process.env.NEXT_PUBLIC_API_URL}/study-materials/${mat.id}`, { method: 'DELETE', headers: { 'x-api-key': process.env.NEXT_PUBLIC_API_KEY || '', 'Authorization': `Bearer ${token}` } });
                               if (activeGroupId) fetchSongs(activeGroupId, token!);
                             }} className="text-sm text-red-500 hover:text-red-700 opacity-0 group-hover/item:opacity-100 transition-opacity">
                               Excluir
@@ -1503,27 +1537,35 @@ export default function DashboardPage() {
             <div className="flex-1 overflow-y-auto pr-2 space-y-8">
               {/* Escalar Músicas */}
               <div>
-                <h4 className="text-lg font-medium text-gray-900 dark:text-white mb-3">Repertório</h4>
+                <div className="flex justify-between items-center mb-3">
+                  <h4 className="text-lg font-medium text-gray-900 dark:text-white">Repertório</h4>
+                  {manageEvent.songs && manageEvent.songs.length > 0 && (
+                    <button onClick={(e) => { e.stopPropagation(); handleShareEventRepertoire(manageEvent); }} className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 text-sm font-medium inline-flex items-center gap-1">
+                      <Share2 className="w-4 h-4" /> Compartilhar Repertório
+                    </button>
+                  )}
+                </div>
                 <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
                   <div className="flex flex-col sm:flex-row gap-2 mb-4 relative">
-                    <input 
-                      list="songsList"
+                    <select 
                       id="songSearchInput"
                       className="flex-1 rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2 border transition-colors"
-                      placeholder="Buscar e selecionar música..."
-                    />
-                    <datalist id="songsList">
+                      defaultValue=""
+                    >
+                      <option value="" disabled>Selecione uma música...</option>
                       {songs.filter(s => !manageEvent.songs?.find(es => es.songId === s.id)).map(s => (
-                        <option key={s.id} value={`${s.title} ${s.artist ? `- ${s.artist}` : ''}`} />
+                        <option key={s.id} value={s.id}>
+                          {s.title} {s.artist ? `- ${s.artist}` : ''}
+                        </option>
                       ))}
-                    </datalist>
+                    </select>
                     <button 
                       onClick={() => {
-                        const input = document.getElementById('songSearchInput') as HTMLInputElement;
-                        const match = songs.find(s => `${s.title} ${s.artist ? `- ${s.artist}` : ''}` === input.value);
-                        if (match) {
-                          handleAssignSong(manageEvent.id, match.id);
-                          input.value = '';
+                        const select = document.getElementById('songSearchInput') as HTMLSelectElement;
+                        const matchId = select.value;
+                        if (matchId) {
+                          handleAssignSong(manageEvent.id, matchId);
+                          select.value = '';
                         }
                       }}
                       className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 transition-colors whitespace-nowrap"
@@ -1569,7 +1611,7 @@ export default function DashboardPage() {
                         </div>
                         <button onClick={async () => {
                           const token = localStorage.getItem('worship_token');
-                          await fetch(`${process.env.NEXT_PUBLIC_API_URL}/study-materials/${mat.id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
+                          await fetch(`${process.env.NEXT_PUBLIC_API_URL}/study-materials/${mat.id}`, { method: 'DELETE', headers: { 'x-api-key': process.env.NEXT_PUBLIC_API_KEY || '', 'Authorization': `Bearer ${token}` } });
                           if (activeGroupId) fetchEvents(activeGroupId, token!);
                         }} className="text-sm text-red-500 hover:text-red-700 opacity-0 group-hover:opacity-100 transition-opacity">
                           Excluir

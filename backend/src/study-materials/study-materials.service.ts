@@ -38,9 +38,9 @@ export class StudyMaterialsService {
       data: {
         title: data.title,
         url: data.url,
-        groupId: data.groupId,
-        songId: data.songId,
-        eventId: data.eventId,
+        groupId: groupId,
+        songId: data.songId || undefined,
+        eventId: data.eventId || undefined,
       },
     });
   }
