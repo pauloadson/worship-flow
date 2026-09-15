@@ -54,6 +54,16 @@ export class EventsController {
     return this.eventsService.addSongToEvent(req.user.sub, groupId, eventId, songId);
   }
 
+  @Post(':eventId/setlist')
+  addSetlist(
+    @Request() req: any,
+    @Param('groupId') groupId: string,
+    @Param('eventId') eventId: string,
+    @Body('songIds') songIds: string[],
+  ) {
+    return this.eventsService.addSetlistToEvent(req.user.sub, groupId, eventId, songIds);
+  }
+
   @Delete(':eventId/songs/:songId')
   removeSong(
     @Request() req: any,

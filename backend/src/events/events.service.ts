@@ -1,4 +1,4 @@
-import { Injectable, ForbiddenException } from '@nestjs/common';
+import { Injectable, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service.js';
 
 @Injectable()
@@ -181,6 +181,44 @@ export class EventsService {
         order: count
       }
     });
+  }
+
+  async addSetlistToEvent(userId: string, groupId: string, eventId: string, songIds: string[]) {
+    await this.verifyAdmin(userId, groupId);
+
+    if (!Array.isArray(songIds)) {
+      throw new BadRequestException('Envie as músicas do setlist para adicionar ao evento.');
+    }
+    const uniqueSongIds = [...new Set(songIds)];
+    if (uniqueSongIds.length === 0) {
+      throw new BadRequestException('Selecione ao menos uma música para adicionar ao evento.');
+    }
+
+    const songs = await this.prisma.song.findMany({
+      where: { id: { in: uniqueSongIds }, groupId },
+      select: { id: true },
+    });
+    if (songs.length !== uniqueSongIds.length) {
+      throw new BadRequestException('Uma ou mais músicas não pertencem ao repertório deste ministério.');
+    }
+
+    const realEventId = await this.ensureRealEvent(groupId, eventId);
+    const existingSongs = await this.prisma.eventSong.findMany({
+      where: { eventId: realEventId },
+      select: { songId: true },
+    });
+    const existingSongIds = new Set(existingSongs.map((song) => song.songId));
+    const songsToAdd = uniqueSongIds.filter((songId) => !existingSongIds.has(songId));
+
+    if (songsToAdd.length > 0) {
+      await this.prisma.$transaction(
+        songsToAdd.map((songId, index) => this.prisma.eventSong.create({
+          data: { eventId: realEventId, songId, order: existingSongs.length + index },
+        })),
+      );
+    }
+
+    return { eventId: realEventId, added: songsToAdd.length };
   }
 
   async removeSongFromEvent(userId: string, groupId: string, eventId: string, songId: string) {

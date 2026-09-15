@@ -112,6 +112,8 @@ export default function DashboardPage() {
   const [setlistLoading, setSetlistLoading] = useState(false);
   const [setlistError, setSetlistError] = useState<string | null>(null);
   const [setlistRetryAfterSeconds, setSetlistRetryAfterSeconds] = useState(0);
+  const [setlistEventId, setSetlistEventId] = useState('');
+  const [setlistApplying, setSetlistApplying] = useState(false);
 
 
   const [showAddEvent, setShowAddEvent] = useState(false);
@@ -960,6 +962,50 @@ export default function DashboardPage() {
       setSetlistError(err instanceof Error ? err.message : 'Erro desconhecido.');
     } finally {
       setSetlistLoading(false);
+    }
+  };
+
+  const handleAddSetlistToEvent = async () => {
+    if (!activeGroupId || !setlistEventId) return;
+
+    const normalizeSongValue = (value?: string) => value?.trim().toLocaleLowerCase('pt-BR') || '';
+    const songIds = setlistSuggestions.map((suggestion) => {
+      const title = normalizeSongValue(suggestion.titulo);
+      const artist = normalizeSongValue(suggestion.artista);
+      return songs.find((song) =>
+        normalizeSongValue(song.title) === title && normalizeSongValue(song.artist) === artist,
+      ) ?? songs.find((song) => normalizeSongValue(song.title) === title);
+    });
+
+    if (songIds.some((song) => !song)) {
+      setSetlistError('Não foi possível localizar todas as músicas sugeridas no repertório. Gere uma nova sugestão.');
+      return;
+    }
+
+    const token = localStorage.getItem('worship_token');
+    setSetlistApplying(true);
+    setSetlistError(null);
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/groups/${activeGroupId}/events/${setlistEventId}/setlist`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': process.env.NEXT_PUBLIC_API_KEY || '',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ songIds: songIds.map((song) => song!.id) }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Não foi possível adicionar o setlist ao evento.');
+
+      await fetchEvents(activeGroupId, token!);
+      setManageEventId(data.eventId);
+      setShowSetlistModal(false);
+      showToast(data.added > 0 ? `${data.added} músicas adicionadas ao evento!` : 'Todas as músicas sugeridas já estavam no evento.');
+    } catch (error: unknown) {
+      setSetlistError(error instanceof Error ? error.message : 'Não foi possível adicionar o setlist ao evento.');
+    } finally {
+      setSetlistApplying(false);
     }
   };
 
@@ -2243,6 +2289,36 @@ export default function DashboardPage() {
                       </div>
                     </div>
                   ))}
+
+                  <div className="mt-5 rounded-lg border border-purple-200 dark:border-purple-800 bg-purple-50 dark:bg-purple-900/20 p-4">
+                    <label htmlFor="setlist-event" className="block text-sm font-semibold text-purple-900 dark:text-purple-100">
+                      Adicionar este setlist a um evento
+                    </label>
+                    <select
+                      id="setlist-event"
+                      value={setlistEventId}
+                      onChange={(event) => setSetlistEventId(event.target.value)}
+                      disabled={setlistApplying || events.length === 0}
+                      className="mt-2 block w-full rounded-md border border-purple-300 dark:border-purple-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      <option value="">Selecione um evento...</option>
+                      {events.map((event) => (
+                        <option key={event.id} value={event.id}>
+                          {event.title} — {new Date(event.date).toLocaleDateString('pt-BR')}
+                        </option>
+                      ))}
+                    </select>
+                    {events.length === 0 && (
+                      <p className="mt-2 text-xs text-purple-700 dark:text-purple-300">Crie um evento para adicionar este repertório.</p>
+                    )}
+                    <button
+                      onClick={handleAddSetlistToEvent}
+                      disabled={!setlistEventId || setlistApplying || events.length === 0}
+                      className="mt-3 w-full rounded-md bg-purple-600 py-2 text-sm font-medium text-white transition-colors hover:bg-purple-700 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {setlistApplying ? 'Adicionando ao evento...' : 'Adicionar setlist ao evento'}
+                    </button>
+                  </div>
 
                   <button
                     onClick={handleSuggestSetlist}
