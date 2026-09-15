@@ -864,7 +864,10 @@ export default function DashboardPage() {
       return;
     }
     
-    let text = `*Repertório: ${event.title}*\n*Data:* ${new Date(event.date).toLocaleDateString('pt-BR')}\n\n`;
+    const eventDate = new Date(event.date);
+    const formattedDate = eventDate.toLocaleDateString('pt-BR');
+    const formattedTime = eventDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    let text = `*Repertório: ${event.title}*\n*Data:* ${formattedDate} às ${formattedTime}\n\n`;
     
     event.songs.forEach((es: EventSong, index: number) => {
       const song = es.song;
