@@ -10,17 +10,21 @@ export interface SetlistSuggestion {
   justificativa: string;
 }
 
-// Rate limiter em memória: máximo de chamadas por grupo por janela de tempo
+// Limite de produto por grupo, independente da cota do projeto Gemini.
 const RATE_LIMIT_MAX = 5;           // máx. 5 sugestões
 const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000; // por hora
 const MINIMUM_SETLIST_SONGS = 4;
-
-interface RateLimitEntry { count: number; windowStart: number; }
-const rateLimitMap = new Map<string, RateLimitEntry>();
+const PROVIDER_COOLDOWN_KEY = 'gemini';
+const DEFAULT_PROJECT_RPM = 5;
+const DEFAULT_PROJECT_RPD = 100;
+const FALLBACK_429_DELAY_MS = 60 * 1000;
+const FALLBACK_503_DELAY_MS = 10 * 1000;
 
 @Injectable()
 export class AiService {
   private genAI: GoogleGenerativeAI;
+  private readonly projectRequestsPerMinute: number;
+  private readonly projectRequestsPerDay: number;
 
   constructor(
     private prisma: PrismaService,
@@ -32,6 +36,8 @@ export class AiService {
       throw new InternalServerErrorException('GEMINI_API_KEY não configurada no servidor.');
     }
     this.genAI = new GoogleGenerativeAI(apiKey);
+    this.projectRequestsPerMinute = this.readPositiveNumber('GEMINI_PROJECT_RPM', DEFAULT_PROJECT_RPM);
+    this.projectRequestsPerDay = this.readPositiveNumber('GEMINI_PROJECT_RPD', DEFAULT_PROJECT_RPD);
   }
 
   async suggestSetlist(userId: string, groupId: string, theme?: string): Promise<SetlistSuggestion[]> {
@@ -55,21 +61,16 @@ export class AiService {
       throw new BadRequestException(`Cadastre pelo menos ${MINIMUM_SETLIST_SONGS} músicas no repertório para usar esta funcionalidade.`);
     }
 
-    // Rate limiting: máx. 5 sugestões por grupo por hora. Validações não consomem a cota.
-    const now = Date.now();
-    const entry = rateLimitMap.get(groupId);
-    if (entry && now - entry.windowStart < RATE_LIMIT_WINDOW_MS) {
-      if (entry.count >= RATE_LIMIT_MAX) {
-        const minutesLeft = Math.ceil((RATE_LIMIT_WINDOW_MS - (now - entry.windowStart)) / 60000);
-        throw new HttpException(
-          `Limite de ${RATE_LIMIT_MAX} sugestões por hora atingido. Tente novamente em ${minutesLeft} minuto(s).`,
-          HttpStatus.TOO_MANY_REQUESTS,
-        );
-      }
-      entry.count++;
-    } else {
-      rateLimitMap.set(groupId, { count: 1, windowStart: now });
-    }
+    await this.ensureProviderIsAvailable();
+
+    // Limite de produto por grupo. As janelas ficam no banco e sobrevivem a reinicializações.
+    const groupNow = new Date();
+    const groupHourStart = new Date(groupNow);
+    groupHourStart.setMinutes(0, 0, 0);
+    const millisecondsUntilNextHour = RATE_LIMIT_WINDOW_MS -
+      (groupNow.getMinutes() * 60 * 1000 + groupNow.getSeconds() * 1000 + groupNow.getMilliseconds());
+    await this.incrementWindow(`group:${groupId}:hour`, groupHourStart, RATE_LIMIT_MAX, millisecondsUntilNextHour);
+    await this.enforceProjectLimits();
 
 
     // Monta o catálogo de músicas como texto
@@ -122,7 +123,111 @@ IMPORTANTE: Responda APENAS com um array JSON válido, sem nenhum texto extra an
       return suggestions;
     } catch (error) {
       if (error instanceof HttpException) throw error;
+
+      const providerStatus = this.getProviderStatus(error);
+      if (providerStatus === HttpStatus.TOO_MANY_REQUESTS || providerStatus === HttpStatus.SERVICE_UNAVAILABLE) {
+        const delayMs = this.getProviderRetryDelay(error) ??
+          (providerStatus === HttpStatus.TOO_MANY_REQUESTS ? FALLBACK_429_DELAY_MS : FALLBACK_503_DELAY_MS);
+        await this.setProviderCooldown(delayMs);
+        throw this.createRetryException(providerStatus, delayMs);
+      }
+
       throw new InternalServerErrorException('Não foi possível gerar sugestões no momento. Tente novamente.');
     }
+  }
+
+  private readPositiveNumber(name: string, fallback: number): number {
+    const value = Number(this.config.get<string>(name));
+    return Number.isInteger(value) && value > 0 ? value : fallback;
+  }
+
+  private async enforceProjectLimits(): Promise<void> {
+    const now = new Date();
+    const minuteStart = new Date(now);
+    minuteStart.setSeconds(0, 0);
+    await this.incrementWindow('project:minute', minuteStart, this.projectRequestsPerMinute, 60 * 1000);
+
+    const pacificDateParts = Object.fromEntries(new Intl.DateTimeFormat('en-US', {
+      timeZone: 'America/Los_Angeles', year: 'numeric', month: '2-digit', day: '2-digit',
+    }).formatToParts(now).map(({ type, value }) => [type, value]));
+    const pacificDate = `${pacificDateParts.year}-${pacificDateParts.month}-${pacificDateParts.day}`;
+    // A data identifica a janela da cota diária do Gemini, que reinicia à meia-noite do Pacífico.
+    const dayStart = new Date(`${pacificDate}T00:00:00.000Z`);
+    await this.incrementWindow('project:day', dayStart, this.projectRequestsPerDay, this.millisecondsUntilPacificMidnight(now));
+  }
+
+  private async incrementWindow(key: string, windowStart: Date, limit: number, retryAfterMs: number): Promise<void> {
+    const usage = await this.prisma.aiUsageWindow.upsert({
+      where: { key_windowStart: { key, windowStart } },
+      create: { key, windowStart, count: 1 },
+      update: { count: { increment: 1 } },
+    });
+
+    if (usage.count > limit) {
+      throw this.createRetryException(HttpStatus.TOO_MANY_REQUESTS, retryAfterMs);
+    }
+  }
+
+  private async ensureProviderIsAvailable(): Promise<void> {
+    const cooldown = await this.prisma.aiProviderCooldown.findUnique({
+      where: { key: PROVIDER_COOLDOWN_KEY },
+    });
+    if (cooldown && cooldown.retryAfter > new Date()) {
+      throw this.createRetryException(HttpStatus.TOO_MANY_REQUESTS, cooldown.retryAfter.getTime() - Date.now());
+    }
+  }
+
+  private async setProviderCooldown(delayMs: number): Promise<void> {
+    const retryAfter = new Date(Date.now() + delayMs);
+    await this.prisma.aiProviderCooldown.upsert({
+      where: { key: PROVIDER_COOLDOWN_KEY },
+      create: { key: PROVIDER_COOLDOWN_KEY, retryAfter },
+      update: { retryAfter },
+    });
+  }
+
+  private getProviderStatus(error: unknown): number | undefined {
+    if (typeof error === 'object' && error !== null && 'status' in error) {
+      const status = (error as { status?: unknown }).status;
+      return typeof status === 'number' ? status : undefined;
+    }
+    return undefined;
+  }
+
+  private getProviderRetryDelay(error: unknown): number | undefined {
+    if (typeof error !== 'object' || error === null || !('errorDetails' in error)) return undefined;
+    const details = (error as { errorDetails?: unknown }).errorDetails;
+    if (!Array.isArray(details)) return undefined;
+
+    const retryInfo = details.find((detail) =>
+      typeof detail === 'object' && detail !== null &&
+      String((detail as Record<string, unknown>)['@type'] ?? '').includes('RetryInfo'),
+    ) as Record<string, unknown> | undefined;
+    const retryDelay = retryInfo?.retryDelay;
+    if (typeof retryDelay !== 'string') return undefined;
+
+    const seconds = Number.parseFloat(retryDelay.replace(/s$/, ''));
+    return Number.isFinite(seconds) && seconds > 0 ? Math.ceil(seconds * 1000) : undefined;
+  }
+
+  private createRetryException(status: HttpStatus, delayMs: number): HttpException {
+    const retryAfterSeconds = Math.max(1, Math.ceil(delayMs / 1000));
+    return new HttpException(
+      {
+        statusCode: status,
+        message: `Limite temporário da IA atingido. Tente novamente em ${retryAfterSeconds} segundo(s).`,
+        retryAfterSeconds,
+      },
+      status,
+    );
+  }
+
+  private millisecondsUntilPacificMidnight(now: Date): number {
+    const formatter = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'America/Los_Angeles', hour: 'numeric', minute: 'numeric', second: 'numeric', hourCycle: 'h23',
+    });
+    const parts = Object.fromEntries(formatter.formatToParts(now).map(({ type, value }) => [type, value]));
+    const secondsToday = Number(parts.hour) * 3600 + Number(parts.minute) * 60 + Number(parts.second);
+    return Math.max(1000, (24 * 3600 - secondsToday) * 1000);
   }
 }

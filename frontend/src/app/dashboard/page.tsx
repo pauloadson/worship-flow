@@ -111,6 +111,7 @@ export default function DashboardPage() {
   const [setlistSuggestions, setSetlistSuggestions] = useState<SetlistSuggestion[]>([]);
   const [setlistLoading, setSetlistLoading] = useState(false);
   const [setlistError, setSetlistError] = useState<string | null>(null);
+  const [setlistRetryAfterSeconds, setSetlistRetryAfterSeconds] = useState(0);
 
 
   const [showAddEvent, setShowAddEvent] = useState(false);
@@ -159,6 +160,14 @@ export default function DashboardPage() {
     document.addEventListener('click', handleGlobalClick);
     return () => document.removeEventListener('click', handleGlobalClick);
   }, []);
+
+  useEffect(() => {
+    if (setlistRetryAfterSeconds <= 0) return;
+    const interval = window.setInterval(() => {
+      setSetlistRetryAfterSeconds((seconds) => Math.max(0, seconds - 1));
+    }, 1000);
+    return () => window.clearInterval(interval);
+  }, [setlistRetryAfterSeconds]);
 
 
 
@@ -940,7 +949,12 @@ export default function DashboardPage() {
         },
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.message || 'Erro ao gerar sugestão.');
+      if (!res.ok) {
+        if (typeof data.retryAfterSeconds === 'number') {
+          setSetlistRetryAfterSeconds(data.retryAfterSeconds);
+        }
+        throw new Error(data.message || 'Erro ao gerar sugestão.');
+      }
       setSetlistSuggestions(data);
     } catch (err: unknown) {
       setSetlistError(err instanceof Error ? err.message : 'Erro desconhecido.');
@@ -1169,10 +1183,10 @@ export default function DashboardPage() {
                         />
                         <button
                           onClick={handleSuggestSetlist}
-                          disabled={setlistLoading}
+                          disabled={setlistLoading || setlistRetryAfterSeconds > 0}
                           className="rounded-md bg-purple-600 hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed px-4 py-1.5 text-sm font-medium text-white transition-colors whitespace-nowrap"
                         >
-                          {setlistLoading ? 'Gerando...' : 'Gerar Sugestão'}
+                          {setlistLoading ? 'Gerando...' : setlistRetryAfterSeconds > 0 ? `Aguarde ${setlistRetryAfterSeconds}s` : 'Gerar Sugestão'}
                         </button>
                       </div>
                       <p className="mt-2 text-xs text-purple-600 dark:text-purple-400">
@@ -2232,10 +2246,10 @@ export default function DashboardPage() {
 
                   <button
                     onClick={handleSuggestSetlist}
-                    disabled={setlistLoading}
+                    disabled={setlistLoading || setlistRetryAfterSeconds > 0}
                     className="mt-2 w-full rounded-md border border-purple-300 dark:border-purple-700 bg-white dark:bg-gray-700 py-2 text-sm font-medium text-purple-700 dark:text-purple-300 hover:bg-purple-50 dark:hover:bg-purple-900/30 transition-colors"
                   >
-                    {setlistLoading ? 'Gerando...' : 'Gerar nova sugestão'}
+                    {setlistLoading ? 'Gerando...' : setlistRetryAfterSeconds > 0 ? `Aguarde ${setlistRetryAfterSeconds}s` : 'Gerar nova sugestão'}
                   </button>
                 </div>
               )}
