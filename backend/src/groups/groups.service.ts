@@ -228,7 +228,26 @@ export class GroupsService {
     });
 
     if (group?.ownerId === userId) {
-      throw new BadRequestException('O dono não pode sair do ministério. Caso queira, você deve excluí-lo.');
+      const otherMembers = await this.prisma.groupMember.findMany({
+        where: { groupId, NOT: { userId } },
+        orderBy: [{ isAdmin: 'desc' }]
+      });
+
+      if (otherMembers.length === 0) {
+        return this.prisma.group.delete({
+          where: { id: groupId }
+        });
+      } else {
+        const nextOwner = otherMembers[0];
+        await this.prisma.group.update({
+          where: { id: groupId },
+          data: { ownerId: nextOwner.userId }
+        });
+        await this.prisma.groupMember.update({
+          where: { userId_groupId: { userId: nextOwner.userId, groupId } },
+          data: { isAdmin: true }
+        });
+      }
     }
 
     return this.prisma.groupMember.delete({

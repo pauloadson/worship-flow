@@ -38,6 +38,21 @@ export class EventsService {
     });
   }
 
+  async updateEvent(userId: string, groupId: string, eventId: string, data: any) {
+    await this.verifyAdmin(userId, groupId);
+    const realEventId = await this.ensureRealEvent(groupId, eventId);
+
+    const updateData: any = {};
+    if (data.title) updateData.title = data.title;
+    if (data.date) updateData.date = new Date(data.date);
+    if (data.eventType) updateData.eventType = data.eventType;
+
+    return this.prisma.event.update({
+      where: { id: realEventId, groupId },
+      data: updateData
+    });
+  }
+
   async deleteEvent(userId: string, groupId: string, eventId: string) {
     await this.verifyAdmin(userId, groupId);
 

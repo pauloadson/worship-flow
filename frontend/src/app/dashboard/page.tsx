@@ -122,6 +122,7 @@ export default function DashboardPage() {
 
 
   const [showAddEvent, setShowAddEvent] = useState(false);
+  const [editingEventId, setEditingEventId] = useState<string | null>(null);
   const [eventForm, setEventForm] = useState({ title: '', date: '', eventType: 'Culto' });
 
   const [showConfigSchedule, setShowConfigSchedule] = useState(false);
@@ -551,9 +552,15 @@ export default function DashboardPage() {
     if (!eventForm.title || !eventForm.date || !activeGroupId) return;
     
     const token = localStorage.getItem('worship_token');
+    const isEditing = !!editingEventId;
+    const url = isEditing
+      ? `${process.env.NEXT_PUBLIC_API_URL}/groups/${activeGroupId}/events/${editingEventId}`
+      : `${process.env.NEXT_PUBLIC_API_URL}/groups/${activeGroupId}/events`;
+    const method = isEditing ? 'PUT' : 'POST';
+
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/groups/${activeGroupId}/events`, {
-        method: 'POST',
+      const res = await fetch(url, {
+        method,
         headers: {
           'Content-Type': 'application/json',
           'x-api-key': process.env.NEXT_PUBLIC_API_KEY || '',
@@ -563,11 +570,12 @@ export default function DashboardPage() {
       });
       if (res.ok) {
         setShowAddEvent(false);
+        setEditingEventId(null);
         setEventForm({ title: '', date: '', eventType: 'Culto' });
         if (token) fetchEvents(activeGroupId, token);
-        showToast('Evento criado com sucesso!');
+        showToast(isEditing ? 'Evento atualizado com sucesso!' : 'Evento criado com sucesso!');
       } else {
-        showToast('Erro ao criar evento. Apenas admins.');
+        showToast('Erro ao salvar evento. Apenas admins.');
       }
     } catch {
       showToast('Erro na conexão');
@@ -594,6 +602,7 @@ export default function DashboardPage() {
         setConfirmDialog(null);
         setShowAddMember(false);
         setEditingMember(null);
+        setEditingEventId(null);
       }
     };
     document.addEventListener('keydown', handleEsc);
@@ -1390,7 +1399,7 @@ export default function DashboardPage() {
                       <button onClick={() => setShowConfigSchedule(true)} className="flex-1 sm:flex-none justify-center rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors inline-flex items-center gap-1.5">
                         <Settings className="w-4 h-4" /> Configurar Agenda Padrão
                       </button>
-                      <button onClick={() => setShowAddEvent(true)} className="flex-1 sm:flex-none justify-center rounded-md border border-transparent bg-blue-600 px-3 py-2 text-xs sm:text-sm font-medium text-white hover:bg-blue-700 transition-colors">
+                      <button onClick={() => { setEditingEventId(null); setEventForm({ title: '', date: '', eventType: 'Culto' }); setShowAddEvent(true); }} className="flex-1 sm:flex-none justify-center rounded-md border border-transparent bg-blue-600 px-3 py-2 text-xs sm:text-sm font-medium text-white hover:bg-blue-700 transition-colors">
                         + Evento Avulso
                       </button>
                     </div>
@@ -1417,6 +1426,13 @@ export default function DashboardPage() {
                               <button onClick={() => handleRsvp(event.id, myStatus === 'CONFIRMED' ? 'PENDING' : 'CONFIRMED')} className={`rounded px-2.5 py-1 text-xs sm:text-sm font-medium transition-colors ${myStatus === 'CONFIRMED' ? 'bg-green-600 text-white hover:bg-green-700' : 'bg-green-50 text-green-700 hover:bg-green-100'}`}>Confirmar</button>
                               <button onClick={() => handleRsvp(event.id, myStatus === 'DECLINED' ? 'PENDING' : 'DECLINED')} className={`rounded px-2.5 py-1 text-xs sm:text-sm font-medium transition-colors ${myStatus === 'DECLINED' ? 'bg-red-600 text-white hover:bg-red-700' : 'bg-red-50 text-red-700 hover:bg-red-100'}`}>Ausente</button>
                               <button onClick={() => setManageEventId(event.id)} className="rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 px-2.5 py-1 text-xs sm:text-sm font-medium transition-colors inline-flex items-center gap-1"><Settings className="w-3.5 h-3.5" /> Escalar</button>
+                              <button onClick={() => {
+                                setEditingEventId(event.id);
+                                const d = new Date(event.date);
+                                const isoDate = new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+                                setEventForm({ title: event.title, date: isoDate, eventType: event.eventType || 'Culto' });
+                                setShowAddEvent(true);
+                              }} className="rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 px-2.5 py-1 text-xs sm:text-sm font-medium transition-colors inline-flex items-center gap-1">Editar</button>
                               <button onClick={() => setShareEventId(event.id)} className="rounded border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/50 px-2.5 py-1 text-xs sm:text-sm font-medium transition-colors inline-flex items-center gap-1"><LinkIcon className="w-3.5 h-3.5" /> Enviar Link</button>
                               <button onClick={() => handleDeleteEvent(event.id, !!event.isVirtual)} className="rounded border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/50 px-2.5 py-1 text-xs sm:text-sm font-medium transition-colors inline-flex items-center gap-1"><Trash2 className="w-3.5 h-3.5" /> Excluir</button>
                             </div>
@@ -1891,7 +1907,9 @@ export default function DashboardPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4" onClick={(e) => { if(e.target === e.currentTarget) setShowAddEvent(false); }}>
           <div className="w-full max-w-md rounded-lg bg-white dark:bg-gray-800 p-6 shadow-xl">
             <div className="flex justify-between items-start mb-4">
-              <h3 className="text-lg font-medium text-gray-900 dark:text-white">Agendar Evento / Escala</h3>
+              <h3 className="text-lg font-medium text-gray-900 dark:text-white">
+                {editingEventId ? 'Editar Evento / Escala' : 'Agendar Evento / Escala'}
+              </h3>
               <button onClick={() => setShowAddEvent(false)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors p-1 -mt-1 -mr-1">
                 <X className="h-5 w-5" />
               </button>
@@ -1938,7 +1956,7 @@ export default function DashboardPage() {
                   Cancelar
                 </button>
                 <button type="submit" className="rounded-md border border-transparent bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 transition-colors">
-                  Agendar
+                  {editingEventId ? 'Salvar' : 'Agendar'}
                 </button>
               </div>
             </form>
@@ -2004,17 +2022,17 @@ export default function DashboardPage() {
                     {manageEvent.songs?.map(es => {
                       const songMaterials = manageEvent.studyMaterials?.filter(mat => mat.songId === es.songId) || [];
                       return (
-                        <li key={es.id} className="flex flex-col bg-white dark:bg-gray-800 p-3 rounded border border-gray-200 dark:border-gray-700">
-                          <div className="flex justify-between items-center">
-                            <div>
-                              <span className="font-medium text-gray-900 dark:text-white">{es.song.title}</span>
-                              <span className="text-xs text-gray-500 dark:text-gray-400 ml-2">{es.song.artist}</span>
+                        <li key={es.id} className="flex flex-col bg-white dark:bg-gray-800 p-3 rounded border border-gray-200 dark:border-gray-700 gap-2">
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                            <div className="flex-1 min-w-0">
+                              <span className="font-medium text-gray-900 dark:text-white text-sm block truncate">{es.song.title}</span>
+                              {es.song.artist && <span className="text-xs text-gray-500 dark:text-gray-400 block truncate">{es.song.artist}</span>}
                             </div>
-                            <div className="flex items-center space-x-3">
-                              <button onClick={() => { setMaterialForm({ title: '', url: '', groupId: '', songId: es.songId, eventId: manageEvent.id }); setShowAddMaterial(true); }} className="text-blue-500 hover:text-blue-700 text-sm font-medium">
+                            <div className="flex items-center space-x-3 self-end sm:self-center shrink-0">
+                              <button onClick={() => { setMaterialForm({ title: '', url: '', groupId: '', songId: es.songId, eventId: manageEvent.id }); setShowAddMaterial(true); }} className="text-blue-500 hover:text-blue-700 text-xs sm:text-sm font-medium whitespace-nowrap">
                                 + Material
                               </button>
-                              <button onClick={() => handleRemoveSongFromEvent(manageEvent.id, es.songId)} className="text-red-500 hover:text-red-700 text-sm font-medium">
+                              <button onClick={() => handleRemoveSongFromEvent(manageEvent.id, es.songId)} className="text-red-500 hover:text-red-700 text-xs sm:text-sm font-medium whitespace-nowrap">
                                 Remover
                               </button>
                             </div>

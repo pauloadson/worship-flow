@@ -21,6 +21,16 @@ export class EventsController {
     return this.eventsService.createEvent(groupId, data, req.user.sub);
   }
 
+  @Put(':eventId')
+  updateEvent(
+    @Request() req: any,
+    @Param('groupId') groupId: string,
+    @Param('eventId') eventId: string,
+    @Body() data: any,
+  ) {
+    return this.eventsService.updateEvent(req.user.sub, groupId, eventId, data);
+  }
+
   @Delete(':eventId')
   deleteEvent(
     @Request() req: any,
