@@ -1,4 +1,4 @@
-import { IsEmail, IsNotEmpty, IsString } from 'class-validator';
+import { IsBoolean, IsEmail, IsNotEmpty, IsOptional, IsString } from 'class-validator';
 
 export class CreateGroupDto {
   @IsString({ message: 'O nome do grupo deve ser um texto válido' })
@@ -11,3 +11,14 @@ export class AddMemberDto {
   @IsNotEmpty({ message: 'O e-mail do membro é obrigatório' })
   email: string;
 }
+
+export class UpdateMemberDto {
+  @IsOptional()
+  @IsString()
+  roleName?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  isAdmin?: boolean;
+}
+

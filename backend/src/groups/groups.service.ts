@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service.js';
-import { CreateGroupDto, AddMemberDto } from './dto/index.js';
+import { CreateGroupDto, AddMemberDto, UpdateMemberDto } from './dto/index.js';
 
 @Injectable()
 export class GroupsService {
@@ -61,7 +61,8 @@ export class GroupsService {
     return this.prisma.groupMember.findMany({
       where: { groupId },
       include: {
-        user: { select: { id: true, name: true, email: true, phone: true } }
+        user: { select: { id: true, name: true, email: true, phone: true } },
+        role: { select: { id: true, name: true } }
       }
     });
   }
@@ -119,6 +120,86 @@ export class GroupsService {
     });
   }
 
+  async updateMember(requesterUserId: string, groupId: string, targetUserId: string, dto: UpdateMemberDto) {
+    const requester = await this.prisma.groupMember.findUnique({
+      where: { userId_groupId: { userId: requesterUserId, groupId } }
+    });
+
+    if (!requester || !requester.isAdmin) {
+      throw new ForbiddenException('Apenas administradores podem gerenciar membros.');
+    }
+
+    const targetMember = await this.prisma.groupMember.findUnique({
+      where: { userId_groupId: { userId: targetUserId, groupId } }
+    });
+
+    if (!targetMember) {
+      throw new NotFoundException('Membro não encontrado neste ministério.');
+    }
+
+    const group = await this.prisma.group.findUnique({ where: { id: groupId } });
+    const isTargetOwner = group?.ownerId === targetUserId;
+
+    let roleId: string | null | undefined = undefined;
+    if (dto.roleName !== undefined) {
+      const trimmedRole = dto.roleName.trim();
+      if (!trimmedRole) {
+        roleId = null;
+      } else {
+        const role = await this.prisma.role.upsert({
+          where: { groupId_name: { groupId, name: trimmedRole } },
+          update: {},
+          create: { groupId, name: trimmedRole }
+        });
+        roleId = role.id;
+      }
+    }
+
+    let isAdmin = dto.isAdmin;
+    if (isTargetOwner) {
+      isAdmin = true; // Owner is always admin
+    }
+
+    return this.prisma.groupMember.update({
+      where: { userId_groupId: { userId: targetUserId, groupId } },
+      data: {
+        ...(roleId !== undefined && { roleId }),
+        ...(isAdmin !== undefined && { isAdmin })
+      },
+      include: {
+        user: { select: { id: true, name: true, email: true, phone: true } },
+        role: { select: { id: true, name: true } }
+      }
+    });
+  }
+
+  async removeMember(requesterUserId: string, groupId: string, targetUserId: string) {
+    const requester = await this.prisma.groupMember.findUnique({
+      where: { userId_groupId: { userId: requesterUserId, groupId } }
+    });
+
+    if (!requester || !requester.isAdmin) {
+      throw new ForbiddenException('Apenas administradores podem remover membros.');
+    }
+
+    const group = await this.prisma.group.findUnique({ where: { id: groupId } });
+    if (group?.ownerId === targetUserId) {
+      throw new BadRequestException('O dono do ministério não pode ser removido.');
+    }
+
+    const targetMember = await this.prisma.groupMember.findUnique({
+      where: { userId_groupId: { userId: targetUserId, groupId } }
+    });
+
+    if (!targetMember) {
+      throw new NotFoundException('Membro não encontrado neste ministério.');
+    }
+
+    return this.prisma.groupMember.delete({
+      where: { userId_groupId: { userId: targetUserId, groupId } }
+    });
+  }
+
   async joinGroup(userId: string, groupId: string) {
     const existing = await this.prisma.groupMember.findUnique({
       where: {
@@ -150,9 +231,6 @@ export class GroupsService {
       throw new BadRequestException('O dono não pode sair do ministério. Caso queira, você deve excluí-lo.');
     }
 
-    // Delete associated RSVPs first or let cascade handle it? 
-    // Wait, the Prisma schema might have cascading deletes on GroupMember.
-    // I'll just delete the group member.
     return this.prisma.groupMember.delete({
       where: {
         userId_groupId: { userId, groupId }
@@ -178,3 +256,4 @@ export class GroupsService {
     });
   }
 }
+

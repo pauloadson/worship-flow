@@ -72,6 +72,10 @@ interface Schedule {
 interface GroupMember {
   userId: string;
   isAdmin: boolean;
+  role?: {
+    id: string;
+    name: string;
+  } | null;
   user: {
     id: string;
     name: string;
@@ -572,6 +576,9 @@ export default function DashboardPage() {
 
   const [showAddMember, setShowAddMember] = useState(false);
   const [addMemberEmail, setAddMemberEmail] = useState('');
+  const [editingMember, setEditingMember] = useState<GroupMember | null>(null);
+  const [memberRoleInput, setMemberRoleInput] = useState('');
+  const [memberIsAdminInput, setMemberIsAdminInput] = useState(false);
 
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
@@ -586,11 +593,74 @@ export default function DashboardPage() {
         setConfirmPresenceEventId(null);
         setConfirmDialog(null);
         setShowAddMember(false);
+        setEditingMember(null);
       }
     };
     document.addEventListener('keydown', handleEsc);
     return () => document.removeEventListener('keydown', handleEsc);
   }, []);
+
+  const handleSaveMember = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingMember || !activeGroupId) return;
+
+    const token = localStorage.getItem('worship_token');
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/groups/${activeGroupId}/members/${editingMember.userId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': process.env.NEXT_PUBLIC_API_KEY || '',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ roleName: memberRoleInput, isAdmin: memberIsAdminInput })
+      });
+
+      if (res.ok) {
+        showToast('Membro atualizado com sucesso!');
+        setEditingMember(null);
+        fetchMembers(activeGroupId, token as string);
+      } else {
+        const data = await res.json();
+        showToast(data.message || 'Erro ao atualizar membro.');
+      }
+    } catch {
+      showToast('Erro na conexão');
+    }
+  };
+
+  const handleRemoveMember = (targetMember: GroupMember) => {
+    if (!activeGroupId) return;
+
+    setConfirmDialog({
+      isOpen: true,
+      title: 'Remover Membro',
+      message: `Tem certeza que deseja remover ${targetMember.user.name} deste ministério?`,
+      onConfirm: async () => {
+        setConfirmDialog(null);
+        const token = localStorage.getItem('worship_token');
+        try {
+          const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/groups/${activeGroupId}/members/${targetMember.userId}`, {
+            method: 'DELETE',
+            headers: {
+              'x-api-key': process.env.NEXT_PUBLIC_API_KEY || '',
+              'Authorization': `Bearer ${token}`
+            }
+          });
+
+          if (res.ok) {
+            showToast('Membro removido com sucesso!');
+            fetchMembers(activeGroupId, token as string);
+          } else {
+            const data = await res.json();
+            showToast(data.message || 'Erro ao remover membro.');
+          }
+        } catch {
+          showToast('Erro na conexão');
+        }
+      }
+    });
+  };
 
   const handleAddMember = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1413,7 +1483,7 @@ export default function DashboardPage() {
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white dark:bg-gray-800 p-4 rounded-lg shadow sm:p-6">
                     <div>
                       <h2 className="text-xl font-medium text-gray-900 dark:text-white">Membros do Ministério</h2>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">Gerencie a equipe e convoque músicos</p>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">Gerencie a equipe, atribua cargos e remova integrantes</p>
                     </div>
                     <button onClick={() => setShowAddMember(true)} className="w-full sm:w-auto rounded-md border border-transparent bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 transition-colors shadow-sm text-center">
                       + Adicionar Membro
@@ -1422,23 +1492,58 @@ export default function DashboardPage() {
                   
                   <div className="overflow-hidden bg-white dark:bg-gray-800 shadow rounded-lg">
                     <ul className="divide-y divide-gray-200 dark:divide-gray-700">
-                      {members.map(member => (
-                        <li key={member.userId} className="p-4 sm:p-6 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
-                          <div className="flex flex-col">
-                            <span className="text-sm font-medium text-gray-900 dark:text-white flex items-center gap-2">
-                              {member.user.name}
-                              {member.isAdmin && (
-                                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300">ADMIN</span>
-                              )}
-                            </span>
-                            <span className="text-sm text-gray-500 dark:text-gray-400">{member.user.email}</span>
-                            {member.user.phone && <span className="text-xs text-gray-400 mt-1 flex items-center gap-1"><Phone className="w-3 h-3" /> {member.user.phone}</span>}
-                          </div>
-                          <div>
-                            {/* Futuramente: Ações como Remover ou Alterar Função */}
-                          </div>
-                        </li>
-                      ))}
+                      {members.map(member => {
+                        const isOwner = member.userId === activeGroup.ownerId;
+                        const isMe = member.userId === user?.id;
+                        const amIAdminOrOwner = activeGroup.ownerId === user?.id || members.find(m => m.userId === user?.id)?.isAdmin;
+
+                        return (
+                          <li key={member.userId} className="p-4 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+                            <div className="flex flex-col gap-1">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <span className="text-base font-semibold text-gray-900 dark:text-white">
+                                  {member.user.name} {isMe && <span className="text-xs text-gray-500 font-normal">(Você)</span>}
+                                </span>
+                                {isOwner ? (
+                                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300">DONO</span>
+                                ) : member.isAdmin ? (
+                                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300">ADMIN</span>
+                                ) : null}
+                                {member.role?.name && (
+                                  <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300 border border-purple-200 dark:border-purple-700/50">
+                                    {member.role.name}
+                                  </span>
+                                )}
+                              </div>
+                              <span className="text-sm text-gray-500 dark:text-gray-400">{member.user.email}</span>
+                              {member.user.phone && <span className="text-xs text-gray-400 flex items-center gap-1"><Phone className="w-3 h-3" /> {member.user.phone}</span>}
+                            </div>
+
+                            {amIAdminOrOwner && (
+                              <div className="flex items-center gap-2 self-end sm:self-center">
+                                <button
+                                  onClick={() => {
+                                    setEditingMember(member);
+                                    setMemberRoleInput(member.role?.name || '');
+                                    setMemberIsAdminInput(member.isAdmin);
+                                  }}
+                                  className="rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-1.5 text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors inline-flex items-center gap-1.5"
+                                >
+                                  <Settings className="w-3.5 h-3.5 text-gray-500" /> Cargo & Permissões
+                                </button>
+                                {!isOwner && !isMe && (
+                                  <button
+                                    onClick={() => handleRemoveMember(member)}
+                                    className="rounded-md border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/50 px-3 py-1.5 text-xs sm:text-sm font-medium transition-colors inline-flex items-center gap-1"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" /> Remover
+                                  </button>
+                                )}
+                              </div>
+                            )}
+                          </li>
+                        );
+                      })}
                       {members.length === 0 && (
                         <li className="p-8 text-center text-gray-500">Nenhum membro encontrado neste ministério.</li>
                       )}
@@ -1450,6 +1555,61 @@ export default function DashboardPage() {
           )}
         </div>
       </main>
+
+      {/* Modal Editar Membro (Cargo & Permissões) */}
+      {editingMember && activeGroup && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4" onClick={(e) => { if(e.target === e.currentTarget) setEditingMember(null); }}>
+          <div className="w-full max-w-md rounded-lg bg-white dark:bg-gray-800 p-6 shadow-xl">
+            <div className="flex justify-between items-start mb-4">
+              <div>
+                <h3 className="text-lg font-bold text-gray-900 dark:text-white">Cargo & Permissões</h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400">{editingMember.user.name}</p>
+              </div>
+              <button onClick={() => setEditingMember(null)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors p-1 -mt-1 -mr-1">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveMember} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Cargo / Função no Ministério</label>
+                <input
+                  type="text"
+                  value={memberRoleInput}
+                  onChange={(e) => setMemberRoleInput(e.target.value)}
+                  className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2 border transition-colors"
+                  placeholder="Ex: Vocalista, Baterista, Ministro..."
+                />
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Exemplo: Vocalista, Baterista, Baixista, Técnico de Som...</p>
+              </div>
+
+              {editingMember.userId !== activeGroup.ownerId && (
+                <div className="flex items-center space-x-2 pt-2">
+                  <input
+                    type="checkbox"
+                    id="isAdminCheckbox"
+                    checked={memberIsAdminInput}
+                    onChange={(e) => setMemberIsAdminInput(e.target.checked)}
+                    className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                  />
+                  <label htmlFor="isAdminCheckbox" className="text-sm font-medium text-gray-700 dark:text-gray-300 cursor-pointer">
+                    Conceder acesso de Administrador
+                  </label>
+                </div>
+              )}
+
+              <div className="mt-6 flex justify-end space-x-3 pt-4 border-t border-gray-200 dark:border-gray-700">
+                <button type="button" onClick={() => setEditingMember(null)} className="rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors">
+                  Cancelar
+                </button>
+                <button type="submit" className="rounded-md border border-transparent bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 transition-colors">
+                  Salvar Alterações
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Modal Adicionar Membro */}
       {showAddMember && activeGroup && (
