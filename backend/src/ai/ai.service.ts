@@ -51,10 +51,24 @@ export class AiService {
       throw new ForbiddenException('Você não faz parte deste ministério.');
     }
 
-    // Busca todas as músicas do grupo
+    // Busca todas as músicas do grupo e o último evento passado em que foram escaladas.
+    // A data do evento é usada como proxy de "tocada", pois o sistema ainda não registra
+    // confirmação de execução após o evento.
+    const now = new Date();
     const songs = await this.prisma.song.findMany({
       where: { groupId },
-      select: { id: true, title: true, artist: true, key: true },
+      select: {
+        id: true,
+        title: true,
+        artist: true,
+        key: true,
+        events: {
+          where: { event: { date: { lt: now } } },
+          select: { event: { select: { date: true } } },
+          orderBy: { event: { date: 'desc' } },
+          take: 1,
+        },
+      },
       orderBy: { title: 'asc' },
     });
 
@@ -76,7 +90,13 @@ export class AiService {
 
     // Monta o catálogo de músicas como texto
     const catalog = songs
-      .map((s, i) => `${i + 1}. Título: "${s.title}", Artista: "${s.artist || 'Desconhecido'}", Tom: "${s.key || 'Não informado'}"`)
+      .map((s, i) => {
+        const lastPlayed = s.events[0]?.event.date;
+        const lastPlayedLabel = lastPlayed
+          ? lastPlayed.toLocaleDateString('pt-BR')
+          : 'Nunca tocada';
+        return `${i + 1}. Título: "${s.title}", Artista: "${s.artist || 'Desconhecido'}", Tom: "${s.key || 'Não informado'}", Última vez tocada: "${lastPlayedLabel}"`;
+      })
       .join('\n');
 
     const themeInstruction = theme
@@ -86,7 +106,7 @@ export class AiService {
     const prompt = `
 Você é um assistente especialista em repertórios para ministérios de louvor evangélicos.
 
-Abaixo está o catálogo completo de músicas disponíveis (com título, artista e tom):
+Abaixo está o catálogo completo de músicas disponíveis (com título, artista, tom e histórico de execução):
 ${catalog}
 
 Tarefa: Selecione exatamente 4 músicas do catálogo acima para compor um setlist coeso para um culto.
@@ -95,6 +115,8 @@ ${themeInstruction}
 Critérios de seleção:
 - Escolha músicas com tons musicais compatíveis ou próximos (para facilitar transições suaves)
 - Varie o andamento (comece com louvor animado, termine com adoração íntima, ou seja criativo)
+- Dê preferência a músicas que nunca foram tocadas ou que não foram tocadas recentemente, evitando repetir sempre o mesmo repertório
+- Considere "Nunca tocada" como prioridade quando isso não prejudicar a coerência do setlist
 - Justifique brevemente a escolha de cada música (máx. 1 frase)
 - Use SOMENTE músicas que existem no catálogo acima. Não invente músicas.
 
