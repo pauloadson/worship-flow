@@ -1130,28 +1130,28 @@ export default function DashboardPage() {
           ) : (
             <>
               <div className="mb-6 bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
-                <div className="p-6 pb-0 flex flex-col">
-                  <div className="flex justify-between items-center mb-6">
+                <div className="p-4 sm:p-6 pb-0 flex flex-col">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
                     <div>
-                      <h2 className="text-2xl font-bold text-gray-900 dark:text-white">{activeGroup.name}</h2>
+                      <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">{activeGroup.name}</h2>
                       <div className="text-sm text-gray-500 dark:text-gray-400 mt-1">Membros: {activeGroup._count.members}</div>
                     </div>
                     {activeGroup.ownerId === user?.id ? (
-                      <button onClick={handleDeleteGroup} className="rounded border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/50 px-3 py-1.5 text-sm font-medium transition-colors">
+                      <button onClick={handleDeleteGroup} className="self-start sm:self-auto rounded border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/50 px-3 py-1.5 text-sm font-medium transition-colors">
                         Excluir Ministério
                       </button>
                     ) : (
-                      <button onClick={handleLeaveGroup} className="rounded border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/50 px-3 py-1.5 text-sm font-medium transition-colors">
+                      <button onClick={handleLeaveGroup} className="self-start sm:self-auto rounded border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/50 px-3 py-1.5 text-sm font-medium transition-colors">
                         Sair do Ministério
                       </button>
                     )}
                   </div>
                   
-                  <div className="flex space-x-8 border-b border-gray-200 dark:border-gray-700">
-                    <button onClick={() => setMainTab('repertorio')} className={`pb-4 text-sm font-medium transition-colors ${mainTab === 'repertorio' ? 'text-blue-600 border-b-2 border-blue-600 dark:text-blue-400 dark:border-blue-400' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'}`}>Músicas</button>
-                    <button onClick={() => setMainTab('eventos')} className={`pb-4 text-sm font-medium transition-colors ${mainTab === 'eventos' ? 'text-blue-600 border-b-2 border-blue-600 dark:text-blue-400 dark:border-blue-400' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'}`}>Eventos & Escalas</button>
-                    <button onClick={() => setMainTab('membros')} className={`pb-4 text-sm font-medium transition-colors ${mainTab === 'membros' ? 'text-blue-600 border-b-2 border-blue-600 dark:text-blue-400 dark:border-blue-400' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'}`}>Membros</button>
-                    <button onClick={() => setMainTab('materiais')} className={`pb-4 text-sm font-medium transition-colors ${mainTab === 'materiais' ? 'text-blue-600 border-b-2 border-blue-600 dark:text-blue-400 dark:border-blue-400' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'}`}>Materiais de Estudo</button>
+                  <div className="flex space-x-4 sm:space-x-8 border-b border-gray-200 dark:border-gray-700 overflow-x-auto whitespace-nowrap scrollbar-none pb-0.5">
+                    <button onClick={() => setMainTab('repertorio')} className={`pb-4 text-sm font-medium transition-colors shrink-0 ${mainTab === 'repertorio' ? 'text-blue-600 border-b-2 border-blue-600 dark:text-blue-400 dark:border-blue-400' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'}`}>Músicas</button>
+                    <button onClick={() => setMainTab('eventos')} className={`pb-4 text-sm font-medium transition-colors shrink-0 ${mainTab === 'eventos' ? 'text-blue-600 border-b-2 border-blue-600 dark:text-blue-400 dark:border-blue-400' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'}`}>Eventos & Escalas</button>
+                    <button onClick={() => setMainTab('membros')} className={`pb-4 text-sm font-medium transition-colors shrink-0 ${mainTab === 'membros' ? 'text-blue-600 border-b-2 border-blue-600 dark:text-blue-400 dark:border-blue-400' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'}`}>Membros</button>
+                    <button onClick={() => setMainTab('materiais')} className={`pb-4 text-sm font-medium transition-colors shrink-0 ${mainTab === 'materiais' ? 'text-blue-600 border-b-2 border-blue-600 dark:text-blue-400 dark:border-blue-400' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'}`}>Materiais de Estudo</button>
                   </div>
                 </div>
               </div>
@@ -1208,7 +1208,7 @@ export default function DashboardPage() {
               </div>
 
               {/* Repertório Geral */}
-              <div className="mt-8 rounded-lg bg-white dark:bg-gray-800 p-6 shadow">
+              <div className="mt-8 rounded-lg bg-white dark:bg-gray-800 p-4 sm:p-6 shadow">
                 <div className="flex justify-between items-center mb-4">
                   <h2 className="text-lg font-medium text-gray-900 dark:text-white">Repertório ({songs.length} músicas)</h2>
                   <button onClick={() => { setSelectedSong(null); setEditMode(true); setSongForm({ title: '', artist: '', key: '', videoLessonUrl: '', lyrics: '', chords: '' }); setShowAddSong(true); }} className="text-sm text-blue-600 dark:text-blue-400 hover:underline">
@@ -1219,22 +1219,22 @@ export default function DashboardPage() {
                 {/* Sugestão de Setlist com IA */}
                 <div className="mb-6 rounded-lg border border-purple-200 dark:border-purple-800 bg-purple-50 dark:bg-purple-900/20 p-4">
                   <div className="flex items-start gap-3">
-                    <span className="text-2xl">✨</span>
-                    <div className="flex-1">
+                    <span className="text-2xl shrink-0">✨</span>
+                    <div className="flex-1 min-w-0">
                       <p className="text-sm font-semibold text-purple-800 dark:text-purple-200">Sugerir Setlist com IA</p>
                       <p className="text-xs text-purple-600 dark:text-purple-400 mt-0.5">A IA analisa seu repertório e sugere 4 músicas com boa harmonia e progressão.</p>
-                      <div className="mt-3 flex gap-2 items-center flex-wrap">
+                      <div className="mt-3 flex flex-col sm:flex-row gap-2 items-stretch sm:items-center">
                         <input
                           type="text"
                           value={setlistTheme}
                           onChange={(e) => setSetlistTheme(e.target.value)}
                           placeholder="Tema opcional (ex: Gratidão, Páscoa...)"
-                          className="flex-1 min-w-0 rounded-md border border-purple-300 dark:border-purple-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                          className="w-full sm:flex-1 min-w-0 rounded-md border border-purple-300 dark:border-purple-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
                         />
                         <button
                           onClick={handleSuggestSetlist}
                           disabled={setlistLoading || setlistRetryAfterSeconds > 0}
-                          className="rounded-md bg-purple-600 hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed px-4 py-1.5 text-sm font-medium text-white transition-colors whitespace-nowrap"
+                          className="w-full sm:w-auto rounded-md bg-purple-600 hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed px-4 py-1.5 text-sm font-medium text-white transition-colors whitespace-nowrap text-center"
                         >
                           {setlistLoading ? 'Gerando...' : setlistRetryAfterSeconds > 0 ? `Aguarde ${setlistRetryAfterSeconds}s` : 'Gerar Sugestão'}
                         </button>
@@ -1252,22 +1252,22 @@ export default function DashboardPage() {
                 ) : (
                   <ul className="divide-y divide-gray-200 dark:divide-gray-700">
                     {songs.map(song => (
-                      <li key={song.id} className="py-3 flex justify-between items-center hover:bg-gray-50 dark:hover:bg-gray-700/50 -mx-4 px-4 rounded transition-colors group cursor-pointer" onClick={() => openSongDetails(song)}>
-                        <div className="flex-1">
-                          <p className="text-sm font-medium text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">{song.title}</p>
-                          <p className="text-sm text-gray-500 dark:text-gray-400">
-                            {song.artist && <span>{song.artist} </span>}
-                            {song.key && <span className="inline-flex items-center rounded-md bg-gray-100 dark:bg-gray-700 px-2 py-0.5 text-xs font-medium text-gray-600 dark:text-gray-300 ml-2">Tom: {song.key}</span>}
+                      <li key={song.id} className="py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 hover:bg-gray-50 dark:hover:bg-gray-700/50 sm:-mx-4 sm:px-4 rounded transition-colors group cursor-pointer" onClick={() => openSongDetails(song)}>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors truncate">{song.title}</p>
+                          <p className="text-sm text-gray-500 dark:text-gray-400 flex flex-wrap items-center gap-2 mt-0.5">
+                            {song.artist && <span className="truncate">{song.artist}</span>}
+                            {song.key && <span className="inline-flex items-center rounded-md bg-gray-100 dark:bg-gray-700 px-2 py-0.5 text-xs font-medium text-gray-600 dark:text-gray-300">Tom: {song.key}</span>}
                           </p>
                         </div>
-                        <div className="flex items-center space-x-3">
-                          <button onClick={(e) => { e.stopPropagation(); handleShareSong(song); }} className="text-sm text-gray-500 hover:text-green-600 dark:hover:text-green-400">
+                        <div className="flex items-center space-x-3 self-end sm:self-center pt-1 sm:pt-0 border-t sm:border-t-0 border-gray-100 dark:border-gray-700/50 w-full sm:w-auto justify-end">
+                          <button onClick={(e) => { e.stopPropagation(); handleShareSong(song); }} className="text-xs sm:text-sm text-gray-500 hover:text-green-600 dark:hover:text-green-400">
                             Compartilhar
                           </button>
-                          <button onClick={(e) => { e.stopPropagation(); setSelectedSong(song); setSongForm({...song}); setEditMode(true); setShowAddSong(true); }} className="text-sm text-gray-500 hover:text-blue-600 dark:hover:text-blue-400">
+                          <button onClick={(e) => { e.stopPropagation(); setSelectedSong(song); setSongForm({...song}); setEditMode(true); setShowAddSong(true); }} className="text-xs sm:text-sm text-gray-500 hover:text-blue-600 dark:hover:text-blue-400">
                             Editar
                           </button>
-                          <button onClick={(e) => { e.stopPropagation(); handleDeleteSong(song.id); }} className="text-sm text-gray-500 hover:text-red-600 dark:hover:text-red-400">
+                          <button onClick={(e) => { e.stopPropagation(); handleDeleteSong(song.id); }} className="text-xs sm:text-sm text-gray-500 hover:text-red-600 dark:hover:text-red-400">
                             Excluir
                           </button>
                         </div>
@@ -1280,10 +1280,10 @@ export default function DashboardPage() {
               )}
 
               {mainTab === 'materiais' && (
-                <div className="mt-8 rounded-lg bg-white dark:bg-gray-800 p-6 shadow">
-                  <div className="flex justify-between items-center mb-6">
+                <div className="mt-8 rounded-lg bg-white dark:bg-gray-800 p-4 sm:p-6 shadow">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
                     <h2 className="text-xl font-medium text-gray-900 dark:text-white">Materiais de Estudo do Grupo</h2>
-                    <button onClick={() => { setMaterialForm({ title: '', url: '', groupId: activeGroupId || '', songId: '', eventId: '' }); setShowAddMaterial(true); }} className="rounded-md border border-transparent bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 transition-colors">
+                    <button onClick={() => { setMaterialForm({ title: '', url: '', groupId: activeGroupId || '', songId: '', eventId: '' }); setShowAddMaterial(true); }} className="w-full sm:w-auto rounded-md border border-transparent bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 transition-colors text-center">
                       + Adicionar Link
                     </button>
                   </div>
@@ -1294,15 +1294,15 @@ export default function DashboardPage() {
                     <ul className="divide-y divide-gray-200 dark:divide-gray-700">
                       {groupMaterials.map(mat => (
                         <li key={mat.id} className="py-3 flex justify-between items-center hover:bg-gray-50 dark:hover:bg-gray-700/50 -mx-4 px-4 rounded transition-colors group">
-                          <div className="flex-1">
-                            <a href={mat.url} target="_blank" rel="noopener noreferrer" className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline">{mat.title}</a>
-                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{mat.url}</p>
+                          <div className="flex-1 min-w-0 pr-2">
+                            <a href={mat.url} target="_blank" rel="noopener noreferrer" className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline block truncate">{mat.title}</a>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 truncate">{mat.url}</p>
                           </div>
                           <button onClick={async () => {
                             const token = localStorage.getItem('worship_token');
                             await fetch(`${process.env.NEXT_PUBLIC_API_URL}/study-materials/${mat.id}`, { method: 'DELETE', headers: { 'x-api-key': process.env.NEXT_PUBLIC_API_KEY || '', 'Authorization': `Bearer ${token}` } });
                             if (activeGroupId) fetchMaterials(activeGroupId, token!);
-                          }} className="text-sm text-red-500 hover:text-red-700 opacity-0 group-hover:opacity-100 transition-opacity">
+                          }} className="text-sm text-red-500 hover:text-red-700 opacity-80 sm:opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
                             Excluir
                           </button>
                         </li>
@@ -1314,13 +1314,13 @@ export default function DashboardPage() {
 
               {mainTab === 'eventos' && (
                 <div className="mt-8">
-                  <div className="flex justify-between items-center mb-6">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
                     <h2 className="text-xl font-medium text-gray-900 dark:text-white">Eventos & Escalas</h2>
-                    <div className="space-x-3">
-                      <button onClick={() => setShowConfigSchedule(true)} className="rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors inline-flex items-center gap-2">
+                    <div className="flex flex-wrap gap-2 w-full sm:w-auto">
+                      <button onClick={() => setShowConfigSchedule(true)} className="flex-1 sm:flex-none justify-center rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors inline-flex items-center gap-1.5">
                         <Settings className="w-4 h-4" /> Configurar Agenda Padrão
                       </button>
-                      <button onClick={() => setShowAddEvent(true)} className="rounded-md border border-transparent bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 transition-colors">
+                      <button onClick={() => setShowAddEvent(true)} className="flex-1 sm:flex-none justify-center rounded-md border border-transparent bg-blue-600 px-3 py-2 text-xs sm:text-sm font-medium text-white hover:bg-blue-700 transition-colors">
                         + Evento Avulso
                       </button>
                     </div>
@@ -1335,20 +1335,20 @@ export default function DashboardPage() {
                       {events.map((event) => {
                         const myStatus = event.rsvps.find(r => r.userId === user?.id)?.status || 'PENDING';
                         return (
-                        <div key={event.id} id={`event-${event.id}`} className="rounded-lg bg-white dark:bg-gray-800 p-6 shadow">
-                          <div className="flex justify-between items-start border-b border-gray-200 dark:border-gray-700 pb-4 mb-4">
+                        <div key={event.id} id={`event-${event.id}`} className="rounded-lg bg-white dark:bg-gray-800 p-4 sm:p-6 shadow">
+                          <div className="flex flex-col sm:flex-row sm:items-start justify-between border-b border-gray-200 dark:border-gray-700 pb-4 mb-4 gap-3">
                             <div>
                               <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{event.title}</h3>
                               <p className="text-sm text-gray-500 dark:text-gray-400">
                                 {new Date(event.date).toLocaleString('pt-BR', { dateStyle: 'long', timeStyle: 'short' })} • {event.eventType}
                               </p>
                             </div>
-                            <div className="flex space-x-2">
-                              <button onClick={() => handleRsvp(event.id, myStatus === 'CONFIRMED' ? 'PENDING' : 'CONFIRMED')} className={`rounded px-3 py-1 text-sm font-medium transition-colors ${myStatus === 'CONFIRMED' ? 'bg-green-600 text-white hover:bg-green-700' : 'bg-green-50 text-green-700 hover:bg-green-100'}`}>Confirmar</button>
-                              <button onClick={() => handleRsvp(event.id, myStatus === 'DECLINED' ? 'PENDING' : 'DECLINED')} className={`rounded px-3 py-1 text-sm font-medium transition-colors ${myStatus === 'DECLINED' ? 'bg-red-600 text-white hover:bg-red-700' : 'bg-red-50 text-red-700 hover:bg-red-100'}`}>Ausente</button>
-                              <button onClick={() => setManageEventId(event.id)} className="rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 px-3 py-1 text-sm font-medium transition-colors inline-flex items-center gap-1.5"><Settings className="w-4 h-4" /> Escalar</button>
-                              <button onClick={() => setShareEventId(event.id)} className="rounded border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/50 px-3 py-1 text-sm font-medium transition-colors inline-flex items-center gap-1.5"><LinkIcon className="w-4 h-4" /> Enviar Link</button>
-                              <button onClick={() => handleDeleteEvent(event.id, !!event.isVirtual)} className="rounded border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/50 px-3 py-1 text-sm font-medium transition-colors inline-flex items-center gap-1.5"><Trash2 className="w-4 h-4" /> Excluir</button>
+                            <div className="flex flex-wrap gap-2 w-full sm:w-auto">
+                              <button onClick={() => handleRsvp(event.id, myStatus === 'CONFIRMED' ? 'PENDING' : 'CONFIRMED')} className={`rounded px-2.5 py-1 text-xs sm:text-sm font-medium transition-colors ${myStatus === 'CONFIRMED' ? 'bg-green-600 text-white hover:bg-green-700' : 'bg-green-50 text-green-700 hover:bg-green-100'}`}>Confirmar</button>
+                              <button onClick={() => handleRsvp(event.id, myStatus === 'DECLINED' ? 'PENDING' : 'DECLINED')} className={`rounded px-2.5 py-1 text-xs sm:text-sm font-medium transition-colors ${myStatus === 'DECLINED' ? 'bg-red-600 text-white hover:bg-red-700' : 'bg-red-50 text-red-700 hover:bg-red-100'}`}>Ausente</button>
+                              <button onClick={() => setManageEventId(event.id)} className="rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 px-2.5 py-1 text-xs sm:text-sm font-medium transition-colors inline-flex items-center gap-1"><Settings className="w-3.5 h-3.5" /> Escalar</button>
+                              <button onClick={() => setShareEventId(event.id)} className="rounded border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/50 px-2.5 py-1 text-xs sm:text-sm font-medium transition-colors inline-flex items-center gap-1"><LinkIcon className="w-3.5 h-3.5" /> Enviar Link</button>
+                              <button onClick={() => handleDeleteEvent(event.id, !!event.isVirtual)} className="rounded border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/50 px-2.5 py-1 text-xs sm:text-sm font-medium transition-colors inline-flex items-center gap-1"><Trash2 className="w-3.5 h-3.5" /> Excluir</button>
                             </div>
                           </div>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1410,12 +1410,12 @@ export default function DashboardPage() {
 
               {mainTab === 'membros' && (
                 <div className="space-y-6">
-                  <div className="flex justify-between items-center bg-white dark:bg-gray-800 p-4 rounded-lg shadow sm:p-6">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white dark:bg-gray-800 p-4 rounded-lg shadow sm:p-6">
                     <div>
                       <h2 className="text-xl font-medium text-gray-900 dark:text-white">Membros do Ministério</h2>
                       <p className="text-sm text-gray-500 dark:text-gray-400">Gerencie a equipe e convoque músicos</p>
                     </div>
-                    <button onClick={() => setShowAddMember(true)} className="rounded-md border border-transparent bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 transition-colors shadow-sm">
+                    <button onClick={() => setShowAddMember(true)} className="w-full sm:w-auto rounded-md border border-transparent bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 transition-colors shadow-sm text-center">
                       + Adicionar Membro
                     </button>
                   </div>
@@ -1748,7 +1748,7 @@ export default function DashboardPage() {
                   placeholder="Ex: Culto de Domingo, Ensaio Geral"
                 />
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Data e Hora</label>
                   <input
@@ -2012,7 +2012,7 @@ export default function DashboardPage() {
                   placeholder="Ex: Culto da Família"
                 />
               </div>
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Dia</label>
                   <select
