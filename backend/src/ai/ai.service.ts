@@ -107,7 +107,7 @@ IMPORTANTE: Responda APENAS com um array JSON válido, sem nenhum texto extra an
 `;
 
     try {
-      const model = this.genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+      const model = this.genAI.getGenerativeModel({ model: 'gemini-3.6-flash' });
       const result = await model.generateContent(prompt);
       const text = result.response.text().trim();
 
