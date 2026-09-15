@@ -19,6 +19,7 @@ const DEFAULT_PROJECT_RPM = 5;
 const DEFAULT_PROJECT_RPD = 100;
 const FALLBACK_429_DELAY_MS = 60 * 1000;
 const FALLBACK_503_DELAY_MS = 10 * 1000;
+const MAX_SERVICE_UNAVAILABLE_RETRIES = 1;
 
 @Injectable()
 export class AiService {
@@ -107,8 +108,7 @@ IMPORTANTE: Responda APENAS com um array JSON válido, sem nenhum texto extra an
 `;
 
     try {
-      const model = this.genAI.getGenerativeModel({ model: 'gemini-3.6-flash' });
-      const result = await model.generateContent(prompt);
+      const result = await this.generateContentWithRetry(prompt);
       const text = result.response.text().trim();
 
       // Remove possíveis blocos de código markdown que a IA possa ter incluído
@@ -139,6 +139,27 @@ IMPORTANTE: Responda APENAS com um array JSON válido, sem nenhum texto extra an
   private readPositiveNumber(name: string, fallback: number): number {
     const value = Number(this.config.get<string>(name));
     return Number.isInteger(value) && value > 0 ? value : fallback;
+  }
+
+  private async generateContentWithRetry(prompt: string) {
+    const model = this.genAI.getGenerativeModel({ model: 'gemini-3.6-flash' });
+
+    for (let attempt = 0; attempt <= MAX_SERVICE_UNAVAILABLE_RETRIES; attempt++) {
+      try {
+        return await model.generateContent(prompt);
+      } catch (error) {
+        const status = this.getProviderStatus(error);
+        if (status !== HttpStatus.SERVICE_UNAVAILABLE || attempt === MAX_SERVICE_UNAVAILABLE_RETRIES) {
+          throw error;
+        }
+
+        const delayMs = this.getProviderRetryDelay(error) ?? FALLBACK_503_DELAY_MS;
+        await this.setProviderCooldown(delayMs);
+        await new Promise<void>((resolve) => setTimeout(resolve, delayMs));
+      }
+    }
+
+    throw new Error('Não foi possível gerar sugestões no momento.');
   }
 
   private async enforceProjectLimits(): Promise<void> {
@@ -212,10 +233,13 @@ IMPORTANTE: Responda APENAS com um array JSON válido, sem nenhum texto extra an
 
   private createRetryException(status: HttpStatus, delayMs: number): HttpException {
     const retryAfterSeconds = Math.max(1, Math.ceil(delayMs / 1000));
+    const message = status === HttpStatus.SERVICE_UNAVAILABLE
+      ? `O serviço Gemini está temporariamente indisponível. Tente novamente em ${retryAfterSeconds} segundo(s).`
+      : `Limite temporário da IA atingido. Tente novamente em ${retryAfterSeconds} segundo(s).`;
     return new HttpException(
       {
         statusCode: status,
-        message: `Limite temporário da IA atingido. Tente novamente em ${retryAfterSeconds} segundo(s).`,
+        message,
         retryAfterSeconds,
       },
       status,
