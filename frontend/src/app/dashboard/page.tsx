@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { X, Calendar, Music, Users, Settings, Link as LinkIcon, Trash2, BookOpen, Phone, Share2 } from 'lucide-react';
 
+const MINIMUM_SETLIST_SONGS = 4;
+
 interface User {
   id: string;
   name: string;
@@ -14,6 +16,7 @@ interface User {
 interface Group {
   id: string;
   name: string;
+  ownerId: string;
   _count: { members: number; songs: number; events: number };
 }
 
@@ -100,6 +103,15 @@ export default function DashboardPage() {
   const [selectedSong, setSelectedSong] = useState<Song | null>(null);
   const [editMode, setEditMode] = useState(false);
   const [songForm, setSongForm] = useState<Partial<Song>>({ title: '', artist: '', key: '', videoLessonUrl: '', lyrics: '', chords: '' });
+
+  // IA: sugestão de setlist
+  interface SetlistSuggestion { titulo: string; artista: string; tom: string; justificativa: string; }
+  const [showSetlistModal, setShowSetlistModal] = useState(false);
+  const [setlistTheme, setSetlistTheme] = useState('');
+  const [setlistSuggestions, setSetlistSuggestions] = useState<SetlistSuggestion[]>([]);
+  const [setlistLoading, setSetlistLoading] = useState(false);
+  const [setlistError, setSetlistError] = useState<string | null>(null);
+
 
   const [showAddEvent, setShowAddEvent] = useState(false);
   const [eventForm, setEventForm] = useState({ title: '', date: '', eventType: 'Culto' });
@@ -415,6 +427,73 @@ export default function DashboardPage() {
     });
   };
 
+  const handleLeaveGroup = () => {
+    if (!activeGroupId) return;
+
+    setConfirmDialog({
+      isOpen: true,
+      title: 'Sair do Ministério',
+      message: 'Tem certeza que deseja sair deste ministério? Você perderá acesso a todas as músicas e eventos.',
+      onConfirm: async () => {
+        setConfirmDialog(null);
+        const token = localStorage.getItem('worship_token');
+        try {
+          const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/groups/${activeGroupId}/leave`, {
+            method: 'POST',
+            headers: {
+              'x-api-key': process.env.NEXT_PUBLIC_API_KEY || '',
+              'Authorization': `Bearer ${token}`
+            }
+          });
+
+          if (res.ok) {
+            showToast('Você saiu do ministério com sucesso!');
+            // Remove token to force a re-login or reload dashboard
+            window.location.href = '/dashboard';
+          } else {
+            const data = await res.json();
+            showToast(data.message || 'Erro ao sair do ministério');
+          }
+        } catch {
+          showToast('Erro na conexão');
+        }
+      }
+    });
+  };
+
+  const handleDeleteGroup = () => {
+    if (!activeGroupId) return;
+
+    setConfirmDialog({
+      isOpen: true,
+      title: 'Excluir Ministério',
+      message: 'TEM CERTEZA? Esta ação apagará permanentemente o ministério, todas as músicas, eventos e materiais associados. Não pode ser desfeita.',
+      onConfirm: async () => {
+        setConfirmDialog(null);
+        const token = localStorage.getItem('worship_token');
+        try {
+          const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/groups/${activeGroupId}`, {
+            method: 'DELETE',
+            headers: {
+              'x-api-key': process.env.NEXT_PUBLIC_API_KEY || '',
+              'Authorization': `Bearer ${token}`
+            }
+          });
+
+          if (res.ok) {
+            showToast('Ministério excluído com sucesso!');
+            window.location.href = '/dashboard';
+          } else {
+            const data = await res.json();
+            showToast(data.message || 'Erro ao excluir ministério');
+          }
+        } catch {
+          showToast('Erro na conexão');
+        }
+      }
+    });
+  };
+
   const handleDeleteEvent = async (eventId: string, isVirtual: boolean) => {
     if (isVirtual) {
       showToast('Este é um evento gerado automaticamente pela Agenda Padrão. Exclua a Agenda se não quiser mais ele.');
@@ -708,6 +787,42 @@ export default function DashboardPage() {
     }
   };
 
+  const handleDeleteSong = (songId: string) => {
+    if (!activeGroupId) return;
+
+    setConfirmDialog({
+      isOpen: true,
+      title: 'Excluir Música',
+      message: 'Tem certeza que deseja excluir esta música do repertório? Essa ação não pode ser desfeita.',
+      onConfirm: async () => {
+        setConfirmDialog(null);
+        const token = localStorage.getItem('worship_token');
+        try {
+          const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/groups/${activeGroupId}/songs/${songId}`, {
+            method: 'DELETE',
+            headers: {
+              'x-api-key': process.env.NEXT_PUBLIC_API_KEY || '',
+              'Authorization': `Bearer ${token}`
+            }
+          });
+
+          if (res.ok) {
+            await fetchSongs(activeGroupId, token!);
+            showToast('Música excluída com sucesso');
+            if (selectedSong?.id === songId) {
+              setShowAddSong(false);
+              setSelectedSong(null);
+            }
+          } else {
+            showToast('Erro ao excluir música');
+          }
+        } catch {
+          showToast('Erro na conexão');
+        }
+      }
+    });
+  };
+
   const openSongDetails = (song: Song) => {
     setSelectedSong(song);
     setSongForm({
@@ -796,9 +911,48 @@ export default function DashboardPage() {
     }
   };
 
+  const handleSuggestSetlist = async () => {
+    if (!activeGroupId) return;
+
+    if (songs.length < MINIMUM_SETLIST_SONGS) {
+      setSetlistLoading(false);
+      setSetlistSuggestions([]);
+      setSetlistError(
+        `Cadastre pelo menos ${MINIMUM_SETLIST_SONGS} músicas no repertório para gerar um setlist. Atualmente há ${songs.length} ${songs.length === 1 ? 'música cadastrada' : 'músicas cadastradas'}.`,
+      );
+      setShowSetlistModal(true);
+      return;
+    }
+
+    const token = localStorage.getItem('worship_token');
+    setSetlistLoading(true);
+    setSetlistError(null);
+    setSetlistSuggestions([]);
+    setShowSetlistModal(true);
+    try {
+      const url = new URL(`${process.env.NEXT_PUBLIC_API_URL}/groups/${activeGroupId}/ai/suggest-setlist`);
+      if (setlistTheme.trim()) url.searchParams.set('theme', setlistTheme.trim());
+      const res = await fetch(url.toString(), {
+        method: 'POST',
+        headers: {
+          'x-api-key': process.env.NEXT_PUBLIC_API_KEY || '',
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Erro ao gerar sugestão.');
+      setSetlistSuggestions(data);
+    } catch (err: unknown) {
+      setSetlistError(err instanceof Error ? err.message : 'Erro desconhecido.');
+    } finally {
+      setSetlistLoading(false);
+    }
+  };
+
   if (loading) {
     return <div className="flex min-h-screen items-center justify-center">Carregando...</div>;
   }
+
 
   const activeGroup = activeGroupId ? groups.find(g => g.id === activeGroupId) : null;
   const userInitials = user?.name ? user.name.substring(0, 2).toUpperCase() : 'WF';
@@ -918,6 +1072,15 @@ export default function DashboardPage() {
                       <h2 className="text-2xl font-bold text-gray-900 dark:text-white">{activeGroup.name}</h2>
                       <div className="text-sm text-gray-500 dark:text-gray-400 mt-1">Membros: {activeGroup._count.members}</div>
                     </div>
+                    {activeGroup.ownerId === user?.id ? (
+                      <button onClick={handleDeleteGroup} className="rounded border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/50 px-3 py-1.5 text-sm font-medium transition-colors">
+                        Excluir Ministério
+                      </button>
+                    ) : (
+                      <button onClick={handleLeaveGroup} className="rounded border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/50 px-3 py-1.5 text-sm font-medium transition-colors">
+                        Sair do Ministério
+                      </button>
+                    )}
                   </div>
                   
                   <div className="flex space-x-8 border-b border-gray-200 dark:border-gray-700">
@@ -988,7 +1151,38 @@ export default function DashboardPage() {
                     + Adicionar
                   </button>
                 </div>
-                
+
+                {/* Sugestão de Setlist com IA */}
+                <div className="mb-6 rounded-lg border border-purple-200 dark:border-purple-800 bg-purple-50 dark:bg-purple-900/20 p-4">
+                  <div className="flex items-start gap-3">
+                    <span className="text-2xl">✨</span>
+                    <div className="flex-1">
+                      <p className="text-sm font-semibold text-purple-800 dark:text-purple-200">Sugerir Setlist com IA</p>
+                      <p className="text-xs text-purple-600 dark:text-purple-400 mt-0.5">A IA analisa seu repertório e sugere 4 músicas com boa harmonia e progressão.</p>
+                      <div className="mt-3 flex gap-2 items-center flex-wrap">
+                        <input
+                          type="text"
+                          value={setlistTheme}
+                          onChange={(e) => setSetlistTheme(e.target.value)}
+                          placeholder="Tema opcional (ex: Gratidão, Páscoa...)"
+                          className="flex-1 min-w-0 rounded-md border border-purple-300 dark:border-purple-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                        />
+                        <button
+                          onClick={handleSuggestSetlist}
+                          disabled={setlistLoading}
+                          className="rounded-md bg-purple-600 hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed px-4 py-1.5 text-sm font-medium text-white transition-colors whitespace-nowrap"
+                        >
+                          {setlistLoading ? 'Gerando...' : 'Gerar Sugestão'}
+                        </button>
+                      </div>
+                      <p className="mt-2 text-xs text-purple-600 dark:text-purple-400">
+                        São necessárias pelo menos {MINIMUM_SETLIST_SONGS} músicas para gerar a sugestão.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+
                 {songs.length === 0 ? (
                   <p className="text-gray-500 dark:text-gray-400 italic">Nenhuma música cadastrada ainda.</p>
                 ) : (
@@ -1008,6 +1202,9 @@ export default function DashboardPage() {
                           </button>
                           <button onClick={(e) => { e.stopPropagation(); setSelectedSong(song); setSongForm({...song}); setEditMode(true); setShowAddSong(true); }} className="text-sm text-gray-500 hover:text-blue-600 dark:hover:text-blue-400">
                             Editar
+                          </button>
+                          <button onClick={(e) => { e.stopPropagation(); handleDeleteSong(song.id); }} className="text-sm text-gray-500 hover:text-red-600 dark:hover:text-red-400">
+                            Excluir
                           </button>
                         </div>
                       </li>
@@ -1237,6 +1434,11 @@ export default function DashboardPage() {
                     <button onClick={() => setEditMode(true)} className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline">
                       Editar
                     </button>
+                    {selectedSong && (
+                      <button onClick={() => handleDeleteSong(selectedSong.id)} className="text-sm font-medium text-red-600 dark:text-red-400 hover:underline">
+                        Excluir
+                      </button>
+                    )}
                   </div>
                 )}
                 <button onClick={() => setShowAddSong(false)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors p-1">
@@ -1549,7 +1751,7 @@ export default function DashboardPage() {
                   <div className="flex flex-col sm:flex-row gap-2 mb-4 relative">
                     <select 
                       id="songSearchInput"
-                      className="flex-1 rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2 border transition-colors"
+                      className="flex-1 min-w-0 w-full truncate rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2 border transition-colors"
                       defaultValue=""
                     >
                       <option value="" disabled>Selecione uma música...</option>
@@ -1575,17 +1777,45 @@ export default function DashboardPage() {
                   </div>
 
                   <ul className="space-y-2">
-                    {manageEvent.songs?.map(es => (
-                      <li key={es.id} className="flex justify-between items-center bg-white dark:bg-gray-800 p-3 rounded border border-gray-200 dark:border-gray-700">
-                        <div>
-                          <span className="font-medium text-gray-900 dark:text-white">{es.song.title}</span>
-                          <span className="text-xs text-gray-500 dark:text-gray-400 ml-2">{es.song.artist}</span>
-                        </div>
-                        <button onClick={() => handleRemoveSongFromEvent(manageEvent.id, es.songId)} className="text-red-500 hover:text-red-700 text-sm font-medium">
-                          Remover
-                        </button>
-                      </li>
-                    ))}
+                    {manageEvent.songs?.map(es => {
+                      const songMaterials = manageEvent.studyMaterials?.filter(mat => mat.songId === es.songId) || [];
+                      return (
+                        <li key={es.id} className="flex flex-col bg-white dark:bg-gray-800 p-3 rounded border border-gray-200 dark:border-gray-700">
+                          <div className="flex justify-between items-center">
+                            <div>
+                              <span className="font-medium text-gray-900 dark:text-white">{es.song.title}</span>
+                              <span className="text-xs text-gray-500 dark:text-gray-400 ml-2">{es.song.artist}</span>
+                            </div>
+                            <div className="flex items-center space-x-3">
+                              <button onClick={() => { setMaterialForm({ title: '', url: '', groupId: '', songId: es.songId, eventId: manageEvent.id }); setShowAddMaterial(true); }} className="text-blue-500 hover:text-blue-700 text-sm font-medium">
+                                + Material
+                              </button>
+                              <button onClick={() => handleRemoveSongFromEvent(manageEvent.id, es.songId)} className="text-red-500 hover:text-red-700 text-sm font-medium">
+                                Remover
+                              </button>
+                            </div>
+                          </div>
+                          {songMaterials.length > 0 && (
+                            <div className="mt-2 pl-3 border-l-2 border-blue-200 dark:border-blue-800">
+                              <ul className="space-y-1">
+                                {songMaterials.map(mat => (
+                                  <li key={mat.id} className="flex justify-between items-center group/mat">
+                                    <a href={mat.url} target="_blank" rel="noopener noreferrer" className="text-xs font-medium text-blue-600 dark:text-blue-400 hover:underline">{mat.title}</a>
+                                    <button onClick={async () => {
+                                      const token = localStorage.getItem('worship_token');
+                                      await fetch(`${process.env.NEXT_PUBLIC_API_URL}/study-materials/${mat.id}`, { method: 'DELETE', headers: { 'x-api-key': process.env.NEXT_PUBLIC_API_KEY || '', 'Authorization': `Bearer ${token}` } });
+                                      if (activeGroupId) fetchEvents(activeGroupId, token!);
+                                    }} className="text-xs text-red-500 hover:text-red-700 opacity-0 group-hover/mat:opacity-100 transition-opacity">
+                                      Excluir
+                                    </button>
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+                        </li>
+                      );
+                    })}
                     {(!manageEvent.songs || manageEvent.songs.length === 0) && (
                       <p className="text-sm text-gray-500 italic text-center py-2">Nenhuma música adicionada ao repertório ainda.</p>
                     )}
@@ -1603,7 +1833,7 @@ export default function DashboardPage() {
                 </div>
                 <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
                   <ul className="space-y-2">
-                    {manageEvent.studyMaterials?.map(mat => (
+                    {manageEvent.studyMaterials?.filter(mat => !mat.songId).map(mat => (
                       <li key={mat.id} className="flex justify-between items-center bg-white dark:bg-gray-800 p-3 rounded border border-gray-200 dark:border-gray-700 group">
                         <div className="flex-1">
                           <a href={mat.url} target="_blank" rel="noopener noreferrer" className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline block">{mat.title}</a>
@@ -1618,8 +1848,8 @@ export default function DashboardPage() {
                         </button>
                       </li>
                     ))}
-                    {(!manageEvent.studyMaterials || manageEvent.studyMaterials.length === 0) && (
-                      <p className="text-sm text-gray-500 italic text-center py-2">Nenhum material adicionado a este evento.</p>
+                    {(!manageEvent.studyMaterials || manageEvent.studyMaterials.filter(mat => !mat.songId).length === 0) && (
+                      <p className="text-sm text-gray-500 italic text-center py-2">Nenhum material adicionado a este evento de forma geral.</p>
                     )}
                   </ul>
                 </div>
@@ -1943,12 +2173,84 @@ export default function DashboardPage() {
         </div>
       )}
 
+      {/* Modal Sugestão de Setlist com IA */}
+      {showSetlistModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" onClick={(e) => { if (e.target === e.currentTarget) setShowSetlistModal(false); }}>
+          <div className="w-full max-w-lg rounded-xl bg-white dark:bg-gray-800 shadow-2xl overflow-hidden">
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-purple-600 to-purple-700">
+              <div className="flex items-center gap-2">
+                <span className="text-xl">✨</span>
+                <h3 className="text-base font-semibold text-white">Setlist Sugerido pela IA</h3>
+              </div>
+              <button onClick={() => setShowSetlistModal(false)} className="text-purple-200 hover:text-white transition-colors">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="px-6 py-5">
+              {setlistLoading && (
+                <div className="flex flex-col items-center gap-3 py-8">
+                  <div className="h-10 w-10 rounded-full border-4 border-purple-200 border-t-purple-600 animate-spin" />
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Analisando seu repertório...</p>
+                </div>
+              )}
+
+              {setlistError && !setlistLoading && (
+                <div className="rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 p-4 text-sm text-red-700 dark:text-red-400">
+                  {setlistError}
+                </div>
+              )}
+
+              {!setlistLoading && setlistSuggestions.length > 0 && (
+                <div className="space-y-3">
+                  {setlistTheme && (
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
+                      Tema: <span className="font-medium text-purple-600 dark:text-purple-400">{setlistTheme}</span>
+                    </p>
+                  )}
+                  {setlistSuggestions.map((s, i) => (
+                    <div key={i} className="flex gap-3 rounded-lg border border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/40 p-3">
+                      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-purple-100 dark:bg-purple-900/60 text-sm font-bold text-purple-700 dark:text-purple-300">
+                        {i + 1}
+                      </span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">{s.titulo}</p>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          {s.artista && <p className="text-xs text-gray-500 dark:text-gray-400">{s.artista}</p>}
+                          {s.tom && s.tom !== 'Não informado' && (
+                            <span className="inline-flex items-center rounded bg-purple-100 dark:bg-purple-900/50 px-1.5 py-0.5 text-xs font-medium text-purple-700 dark:text-purple-300">
+                              Tom: {s.tom}
+                            </span>
+                          )}
+                        </div>
+                        <p className="mt-1 text-xs text-gray-500 dark:text-gray-400 italic">{s.justificativa}</p>
+                      </div>
+                    </div>
+                  ))}
+
+                  <button
+                    onClick={handleSuggestSetlist}
+                    disabled={setlistLoading}
+                    className="mt-2 w-full rounded-md border border-purple-300 dark:border-purple-700 bg-white dark:bg-gray-700 py-2 text-sm font-medium text-purple-700 dark:text-purple-300 hover:bg-purple-50 dark:hover:bg-purple-900/30 transition-colors"
+                  >
+                    {setlistLoading ? 'Gerando...' : 'Gerar nova sugestão'}
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Toast Notification */}
       {toastMessage && (
         <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-[60] bg-gray-900 text-white dark:bg-white dark:text-gray-900 px-6 py-3 rounded-full shadow-lg font-medium text-sm transition-opacity duration-300 animate-in fade-in slide-in-from-bottom-4">
           {toastMessage}
         </div>
       )}
+
     </div>
   );
 }
