@@ -8,9 +8,16 @@ async function bootstrap() {
     logger: isProd ? ['error', 'warn'] : ['log', 'debug', 'error', 'verbose', 'warn'],
   });
   
-  // Habilita CORS para o frontend local (Next.js roda na porta 3000 por padrão)
+  // Habilita CORS para o frontend (local e produção)
+  const allowedOrigins = [
+    'http://localhost:3000',
+    'https://worship-floww.vercel.app',
+  ];
+  if (process.env.FRONTEND_URL) {
+    allowedOrigins.push(process.env.FRONTEND_URL);
+  }
   app.enableCors({
-    origin: ['http://localhost:3000'],
+    origin: allowedOrigins,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
     credentials: true,
   });
