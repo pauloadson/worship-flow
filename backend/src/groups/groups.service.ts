@@ -138,4 +138,43 @@ export class GroupsService {
       }
     });
   }
+
+  async leaveGroup(userId: string, groupId: string) {
+    await this.verifyMembership(userId, groupId);
+
+    const group = await this.prisma.group.findUnique({
+      where: { id: groupId }
+    });
+
+    if (group?.ownerId === userId) {
+      throw new BadRequestException('O dono não pode sair do ministério. Caso queira, você deve excluí-lo.');
+    }
+
+    // Delete associated RSVPs first or let cascade handle it? 
+    // Wait, the Prisma schema might have cascading deletes on GroupMember.
+    // I'll just delete the group member.
+    return this.prisma.groupMember.delete({
+      where: {
+        userId_groupId: { userId, groupId }
+      }
+    });
+  }
+
+  async deleteGroup(userId: string, groupId: string) {
+    const group = await this.prisma.group.findUnique({
+      where: { id: groupId }
+    });
+
+    if (!group) {
+      throw new NotFoundException('Ministério não encontrado.');
+    }
+
+    if (group.ownerId !== userId) {
+      throw new ForbiddenException('Apenas o dono do ministério pode excluí-lo.');
+    }
+
+    return this.prisma.group.delete({
+      where: { id: groupId }
+    });
+  }
 }
