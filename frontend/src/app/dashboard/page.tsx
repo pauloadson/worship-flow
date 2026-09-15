@@ -84,6 +84,7 @@ interface StudyMaterial {
   id: string;
   title: string;
   url: string;
+  songId?: string;
   createdAt: string;
 }
 
