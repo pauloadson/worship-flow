@@ -2235,8 +2235,8 @@ export default function DashboardPage() {
 
       {/* Modal Sugestão de Setlist com IA */}
       {showSetlistModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" onClick={(e) => { if (e.target === e.currentTarget) setShowSetlistModal(false); }}>
-          <div className="w-full max-w-lg rounded-xl bg-white dark:bg-gray-800 shadow-2xl overflow-hidden">
+        <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/50 backdrop-blur-sm p-4" onClick={(e) => { if (e.target === e.currentTarget) setShowSetlistModal(false); }}>
+          <div className="flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-xl bg-white dark:bg-gray-800 shadow-2xl">
             {/* Header */}
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-purple-600 to-purple-700">
               <div className="flex items-center gap-2">
@@ -2249,7 +2249,7 @@ export default function DashboardPage() {
             </div>
 
             {/* Body */}
-            <div className="px-6 py-5">
+            <div className="min-h-0 overflow-y-auto px-6 py-5">
               {setlistLoading && (
                 <div className="flex flex-col items-center gap-3 py-8">
                   <div className="h-10 w-10 rounded-full border-4 border-purple-200 border-t-purple-600 animate-spin" />
