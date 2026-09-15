@@ -10,12 +10,13 @@ import { GroupsModule } from './groups/groups.module.js';
 import { SongsModule } from './songs/songs.module.js';
 import { EventsModule } from './events/events.module.js';
 import { StudyMaterialsModule } from './study-materials/study-materials.module.js';
+import { AiModule } from './ai/ai.module.js';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     PrismaModule, 
-    AuthModule, GroupsModule, SongsModule, EventsModule, StudyMaterialsModule
+    AuthModule, GroupsModule, SongsModule, EventsModule, StudyMaterialsModule, AiModule
   ],
   controllers: [AppController],
   providers: [
