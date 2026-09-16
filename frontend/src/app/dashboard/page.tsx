@@ -1215,15 +1215,16 @@ export default function DashboardPage() {
                       <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">{activeGroup.name}</h2>
                       <div className="text-sm text-gray-500 dark:text-gray-400 mt-1">Membros: {activeGroup._count.members}</div>
                     </div>
-                    {activeGroup.ownerId === user?.id ? (
-                      <button onClick={handleDeleteGroup} className="self-start sm:self-auto rounded border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/50 px-3 py-1.5 text-sm font-medium transition-colors">
-                        Excluir Ministério
-                      </button>
-                    ) : (
-                      <button onClick={handleLeaveGroup} className="self-start sm:self-auto rounded border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/50 px-3 py-1.5 text-sm font-medium transition-colors">
+                    <div className="flex flex-wrap gap-2 self-start sm:self-auto">
+                      <button onClick={handleLeaveGroup} className="rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 px-3 py-1.5 text-sm font-medium transition-colors">
                         Sair do Ministério
                       </button>
-                    )}
+                      {activeGroup.ownerId === user?.id && (
+                        <button onClick={handleDeleteGroup} className="rounded border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/50 px-3 py-1.5 text-sm font-medium transition-colors">
+                          Excluir Ministério
+                        </button>
+                      )}
+                    </div>
                   </div>
                   
                   <div className="flex space-x-4 sm:space-x-8 border-b border-gray-200 dark:border-gray-700 overflow-x-auto whitespace-nowrap scrollbar-none pb-0.5">
